@@ -55,7 +55,10 @@ public:
         return result;
     }
 
-    
+    // 获取模数P
+    static __device__ __host__ uint256_t getModule() {
+        return getP();
+    }
     // 获取高低位（现在是128位的高低位）
     __device__ __host__ uint128_t getHigh() const { return value.high; }
     __device__ __host__ uint128_t getLow() const { return value.low; }

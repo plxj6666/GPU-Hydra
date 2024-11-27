@@ -4,6 +4,8 @@
 #include "finite_field.h"
 #include "polynomial.h"
 #include <cassert>
+#include <cusolverDn.h>
+#include <cublas_v2.h>
 
 #define MAX_MATRIX_SIZE 64  // 最大矩阵大小
 
@@ -22,6 +24,7 @@ public:
     __host__ __device__ Matrix(const Matrix& other);
     __host__ __device__ ~Matrix();
     __host__ __device__ Matrix& operator=(const Matrix& other);
+    __host__ __device__ Matrix() : rows(0), cols(0), data(nullptr), is_device(false) {}
 
     // 基本访问方法
     __host__ __device__ int getRows() const { return rows; }
@@ -73,6 +76,12 @@ public:
         }
         return true;
     }
+
+    // 计算特征多项式
+    __device__ __host__ Polynomial characteristicPolynomial() const;
+    __device__ __host__ Polynomial characteristicPolynomialIterative() const;
+    // 计算最小多项式
+    __device__ __host__ Polynomial minimalPolynomial() const;
 };
 
 // CUDA核函数声明

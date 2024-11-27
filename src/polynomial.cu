@@ -241,3 +241,17 @@ __device__ __host__ bool Polynomial::isIrreducible() const {
     Polynomial diff = u - x;
     return gcd(diff).degree() == 0;
 }
+
+std::ostream& operator<<(std::ostream& os, const Polynomial& poly) {
+    os << "Polynomial (degree " << poly.degree() << "):" << std::endl;
+    for(int i = 0; i <= poly.degree(); i++) {
+        FiniteField coeff = poly[i];
+        // 如果系数大于 p/2，说明是负数
+        if(coeff.getLow() > FiniteField::getModule().low/2) {
+            coeff = -coeff;  // 转换为正数表示
+            os << "-";
+        }
+        os << "  coefficient of x^" << i << " = " << coeff << std::endl;
+    }
+    return os;
+}
