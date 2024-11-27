@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgpu_hydra.a CMakeFiles/gpu_hydra.dir/src/finite_field.cu.o CMakeFiles/gpu_hydra.dir/src/matrix.cu.o CMakeFiles/gpu_hydra.dir/src/Hydra.cu.o CMakeFiles/gpu_hydra.dir/src/polynomial.cu.o
+/usr/bin/ranlib libgpu_hydra.a

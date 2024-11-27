@@ -1,0 +1,1 @@
+/usr/bin/g++ CMakeFiles/test_polynomial.dir/test/test_polynomial.cu.o CMakeFiles/test_polynomial.dir/cmake_device_link.o -o test_polynomial  libgpu_hydra.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl  -L"/usr/local/cuda-11.8/targets/x86_64-linux/lib/stubs" -L"/usr/local/cuda-11.8/targets/x86_64-linux/lib"
