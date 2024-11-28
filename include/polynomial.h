@@ -46,6 +46,9 @@ public:
     
     // 赋值运算符
     __device__ __host__ Polynomial& operator=(const Polynomial& other);
+
+    // 主机输出多项式
+    __host__ std::string toString() const;
 };
 
 #endif // POLYNOMIAL_H

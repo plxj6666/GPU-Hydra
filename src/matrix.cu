@@ -25,24 +25,24 @@ __global__ void matrixAddKernel(const Matrix* A, const Matrix* B, Matrix* C) {
     }
 }
 
-// CUDA核函数 - 矩阵乘法
-__global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+// // CUDA核函数 - 矩阵乘法
+// __global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C) {
+//     int row = blockIdx.y * blockDim.y + threadIdx.y;
+//     int col = blockIdx.x * blockDim.x + threadIdx.x;
     
-    if (row < A->getRows() && col < B->getCols()) {
-        FiniteField sum = FiniteField::fromParts(0,0);
+//     if (row < A->getRows() && col < B->getCols()) {
+//         FiniteField sum = FiniteField::fromParts(0,0);
         
-        for (int k = 0; k < A->getCols(); k++) {
-            FiniteField a = A->at(row, k);
-            FiniteField b = B->at(k, col);
-            FiniteField prod = a * b;
-            sum = sum + prod;
-        }
+//         for (int k = 0; k < A->getCols(); k++) {
+//             FiniteField a = A->at(row, k);
+//             FiniteField b = B->at(k, col);
+//             FiniteField prod = a * b;
+//             sum = sum + prod;
+//         }
         
-        C->at(row, col) = sum;
-    }
-}
+//         C->at(row, col) = sum;
+//     }
+// }
 
 // 构造函数
 __host__ __device__ Matrix::Matrix(int r, int c) : rows(r), cols(c), is_device(false) {
@@ -215,14 +215,20 @@ __host__ Matrix Matrix::deviceMultiply(const Matrix& A, const Matrix& B) {
     
     Matrix C = createDeviceMatrix(A.rows, B.cols);
     
+    // 只需要复制矩阵对象，因为数据已经在设备上
     Matrix *d_A, *d_B, *d_C;
     CHECK_CUDA_ERROR(cudaMalloc(&d_A, sizeof(Matrix)));
     CHECK_CUDA_ERROR(cudaMalloc(&d_B, sizeof(Matrix)));
     CHECK_CUDA_ERROR(cudaMalloc(&d_C, sizeof(Matrix)));
     
-    CHECK_CUDA_ERROR(cudaMemcpy(d_A, &A, sizeof(Matrix), cudaMemcpyHostToDevice));
-    CHECK_CUDA_ERROR(cudaMemcpy(d_B, &B, sizeof(Matrix), cudaMemcpyHostToDevice));
-    CHECK_CUDA_ERROR(cudaMemcpy(d_C, &C, sizeof(Matrix), cudaMemcpyHostToDevice));
+    // 创建临时Matrix对象，确保data指针指向设备内存
+    Matrix h_A = A;
+    Matrix h_B = B;
+    Matrix h_C = C;
+    
+    CHECK_CUDA_ERROR(cudaMemcpy(d_A, &h_A, sizeof(Matrix), cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_B, &h_B, sizeof(Matrix), cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_C, &h_C, sizeof(Matrix), cudaMemcpyHostToDevice));
     
     dim3 blockSize(16, 16);
     dim3 gridSize(
@@ -230,7 +236,12 @@ __host__ Matrix Matrix::deviceMultiply(const Matrix& A, const Matrix& B) {
         (A.rows + blockSize.y - 1) / blockSize.y
     );
     
-    matrixMultiplyKernel<<<gridSize, blockSize>>>(d_A, d_B, d_C);
+    // 添加调试信息
+    printf("Host: Matrix multiply - A rows=%d, cols=%d, B rows=%d, cols=%d\n",
+           A.rows, A.cols, B.rows, B.cols);
+           
+    size_t sharedMemSize = 2 * blockSize.x * blockSize.y * sizeof(FiniteField);
+    matrixMultiplyKernel<<<gridSize, blockSize, sharedMemSize>>>(d_A, d_B, d_C);
     CHECK_CUDA_ERROR(cudaGetLastError());
     CHECK_CUDA_ERROR(cudaDeviceSynchronize());
     
@@ -281,7 +292,7 @@ __host__ std::string Matrix::toString() const {
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             oss << "M[" << i << "][" << j << "] = ";
-            data[i * cols + j].print(oss);
+            data[i * cols + j].print();
             oss << "\n";
         }
     }
@@ -462,48 +473,50 @@ __host__ __device__ Matrix::~Matrix() {
 }
 
 __device__ __host__ Polynomial Matrix::characteristicPolynomial() const {
-    if (rows != cols) {
-        #ifdef __CUDA_ARCH__
-        return Polynomial();
-        #else
-        throw std::runtime_error("Matrix must be square");
-        #endif
-    }
-
-    const int n = rows;
-    Polynomial charPoly;
-
-    // 使用固定大小的数组存储系数和幂和
-    FiniteField c[MAX_MATRIX_SIZE + 1]; // 特征多项式的系数
-    FiniteField p[MAX_MATRIX_SIZE + 1]; // 幂和（迹的累积）
-    // 初始化数组
-    for (int i = 0; i <= n; ++i) {
-        c[i] = FiniteField::fromParts(0, 0);
-        p[i] = FiniteField::fromParts(0, 0);
-    }
-
-    c[n] = FiniteField::fromParts(0, 1); // λ^n 的系数为 1
-
-    for (int k = 1; k <= n; ++k) {
-        // 计算 A^k 的迹
-        Matrix Ak = this->power(k); // 计算 A 的 k 次幂
-        p[k] = Ak.trace(); // 计算迹并存储
-
-        // 根据牛顿恒等式计算系数
-        FiniteField sum = FiniteField::fromParts(0, 0);
-        for (int j = 1; j < k; ++j) {
-            sum = (sum + c[n - j] * p[k - j]).mod();
+    #ifdef __CUDA_ARCH__
+        return characteristicPolynomialDevice();
+    #else 
+        printf("Host: Starting characteristic polynomial calculation\n");
+        const int n = rows;
+        Polynomial charPoly;
+        
+        FiniteField c[MAX_MATRIX_SIZE + 1];
+        FiniteField p[MAX_MATRIX_SIZE + 1];
+        
+        for (int i = 0; i <= n; ++i) {
+            c[i] = FiniteField::fromParts(0, 0);
+            p[i] = FiniteField::fromParts(0, 0);
         }
-        c[n - k] = (-p[k] - sum) / FiniteField::fromParts(0, k);
-    }
-
-    // 将系数设置到 Polynomial 对象中
-    for (int i = 0; i <= n; ++i) {
-        charPoly.setCoefficient(i, c[i]);
-    }
-
-    return charPoly;
+        
+        c[n] = FiniteField::fromParts(0, 1);
+        
+        for (int k = 1; k <= n; ++k) {
+            printf("Host: Computing power %d\n", k);
+            Matrix Ak = this->power(k);
+            printf("Host: Matrix power %d computed, calculating trace\n", k);
+            p[k] = Ak.trace().mod();
+            printf("Host: Trace for power %d = ", k);
+            p[k].print();
+            printf("\n");
+            
+            FiniteField sum = FiniteField::fromParts(0, 0);
+            for (int j = 1; j < k; ++j) {
+                sum = (sum + c[n - j] * p[k - j]).mod();
+            }
+            c[n - k] = ((-p[k] - sum) / FiniteField::fromParts(0, k)).mod();
+            printf("Host: Coefficient c[%d] = ", n-k);
+            c[n - k].print();
+            printf("\n");
+        }
+        
+        for (int i = 0; i <= n; ++i) {
+            charPoly.setCoefficient(i, c[i]);
+        }
+        
+        return charPoly;
+    #endif
 }
+
 
 
 
@@ -514,7 +527,7 @@ __device__ __host__ Polynomial Matrix::minimalPolynomial() const {
     // 计算导数
     Polynomial derivative;
     for(int i = 1; i <= charPoly.degree(); i++) {
-        if(i % 2 == 1) {  // 在特征为2的域中，只有奇数次项的导数非零
+        if(i % 2 == 1) {  // 在特征为2的域中，只有奇次项的导数非零
             derivative.setCoefficient(i-1, charPoly[i]);
         }
     }
@@ -539,23 +552,48 @@ __device__ __host__ Polynomial Matrix::minimalPolynomial() const {
     return minPoly;
 }
 
-// 在设备端使用的迭代方法计算特征多项式
-__device__ Polynomial Matrix::characteristicPolynomialIterative() const {
-    // 使用递归方法计算特征多项式
+__device__ Polynomial Matrix::characteristicPolynomialDevice() const {
+    printf("Device: Starting characteristic polynomial calculation\n");
+    const int n = rows;
     Polynomial charPoly;
-    charPoly.setCoefficient(rows, FiniteField::fromParts(0, 1));  // 最高次项系数为1
     
-    // 使用递归方法计算系数
-    for(int i = 0; i < rows; i++) {
-        FiniteField trace = FiniteField::fromParts(0, 0);
-        for(int j = 0; j < rows; j++) {
-            trace = trace + at(j, j);
+    FiniteField c[MAX_MATRIX_SIZE + 1];
+    FiniteField p[MAX_MATRIX_SIZE + 1];
+    
+    for (int i = 0; i <= n; ++i) {
+        c[i] = FiniteField::fromParts(0, 0);
+        p[i] = FiniteField::fromParts(0, 0);
+    }
+    
+    c[n] = FiniteField::fromParts(0, 1);
+    
+    for (int k = 1; k <= n; ++k) {
+        printf("Device: Computing power %d\n", k);
+        Matrix Ak = this->devicePower(k);
+        printf("Device: Matrix power %d computed, calculating trace\n", k);
+        p[k] = Ak.deviceTrace();
+        printf("Device: Trace for power %d = ", k);
+        p[k].print();
+        printf("\n");
+        
+        FiniteField sum = FiniteField::fromParts(0, 0);
+        for (int j = 1; j < k; ++j) {
+            sum = (sum + c[n - j] * p[k - j]).mod();
         }
-        charPoly.setCoefficient(rows-1-i, -trace / FiniteField::fromParts(0, i+1));
+        c[n - k] = ((-p[k] - sum) / FiniteField::fromParts(0, k)).mod();
+        printf("Device: Coefficient c[%d] = ", n-k);
+        c[n - k].print();
+        printf("\n");
+    }
+    
+    for (int i = 0; i <= n; ++i) {
+        charPoly.setCoefficient(i, c[i]);
     }
     
     return charPoly;
 }
+
+
 
 __device__ __host__ Matrix Matrix::operator*(const Matrix& other) const {
     if (cols != other.rows) {
@@ -614,6 +652,7 @@ __device__ __host__ Matrix Matrix::power(int k) const {
 }
 
 
+
 __device__ __host__ FiniteField Matrix::trace() const {
     if (rows != cols) {
         #ifdef __CUDA_ARCH__
@@ -627,41 +666,133 @@ __device__ __host__ FiniteField Matrix::trace() const {
 
     // 累加主对角线元素
     for (int i = 0; i < rows; ++i) {
-        trace = (trace + at(i, i)).mod();
+        trace = (trace + at(i, i)).mod(); // 每次累加后取模
     }
 
     return trace;
 }
 
-
-
-
-FiniteField Matrix::calculateSumOfAll3x3Subdeterminants() const {
-    FiniteField sum = FiniteField::fromParts(0,0);  // 初始和为0
-
-    // 遍历每个3x3子矩阵
-    for (int excludedRow = 0; excludedRow < 4; ++excludedRow) {
-        for (int excludedCol = 0; excludedCol < 4; ++excludedCol) {
-            // 创建3x3子矩阵
-            Matrix subMatrix(3, 3);
-            int subi = 0;
-            for (int i = 0; i < 4; ++i) {
-                if (i == excludedRow) continue; // 跳过排除的行
-
-                int subj = 0;
-                for (int j = 0; j < 4; ++j) {
-                    if (j == excludedCol) continue; // 跳过排除的列
-
-                    subMatrix.at(subi, subj) = this->at(i, j);
-                    subj++;
-                }
-                subi++;
+__global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C) {
+    extern __shared__ FiniteField sharedMem[];
+    FiniteField* As = sharedMem;
+    FiniteField* Bs = &sharedMem[blockDim.x * blockDim.y];
+    
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    // 初始化累加和
+    FiniteField sum = FiniteField::fromParts(0, 0);
+    
+    // 用于调试
+    if (row == 0 && col == 0) {
+        printf("Debug: Matrix multiply - A rows=%d, cols=%d, B rows=%d, cols=%d\n",
+               A->getRows(), A->getCols(), B->getRows(), B->getCols());
+    }
+    
+    for (int m = 0; m < (A->getCols() + blockDim.x - 1) / blockDim.x; ++m) {
+        // 加载数据到共享内存
+        if (row < A->getRows() && m * blockDim.x + threadIdx.x < A->getCols()) {
+            As[threadIdx.y * blockDim.x + threadIdx.x] = A->at(row, m * blockDim.x + threadIdx.x);
+        }
+        
+        if (m * blockDim.y + threadIdx.y < B->getRows() && col < B->getCols()) {
+            Bs[threadIdx.y * blockDim.x + threadIdx.x] = B->at(m * blockDim.y + threadIdx.y, col);
+        }
+        
+        __syncthreads();
+        
+        // 计算当前块的部分和
+        if (row < C->getRows() && col < C->getCols()) {
+            for (int k = 0; k < blockDim.x && m * blockDim.x + k < A->getCols(); ++k) {
+                sum = (sum + As[threadIdx.y * blockDim.x + k] * 
+                      Bs[k * blockDim.x + threadIdx.x]).mod();
             }
-
-            // 计算当前3x3子矩阵的行列式并加到总和中
-            sum = (sum + subMatrix.determinant()).mod();
+        }
+        
+        __syncthreads();
+    }
+    
+    // 写入结果
+    if (row < C->getRows() && col < C->getCols()) {
+        C->at(row, col) = sum.mod();
+        // 调试输出
+        if (row == 0 && col == 0) {
+            printf("Debug: First element of result = ");
+            sum.print();
+            printf("\n");
         }
     }
+}
 
-    return sum;
+__device__ Matrix Matrix::devicePower(int k) const {
+    printf("Device: Starting power calculation for k=%d\n", k);
+    if (k == 0) return Matrix::identity(this->getRows());
+    if (k == 1) return *this;
+    
+    // 打印当前矩阵的维度信息
+    printf("Device: Current matrix dimensions: rows=%d, cols=%d\n", rows, cols);
+    
+    // 直接在设备栈上创建矩阵
+    Matrix result = Matrix::identity(this->getRows());
+    Matrix base = *this;
+    Matrix temp(rows, cols);  // 临时矩阵用于存储中间结果
+    
+    while (k > 0) {
+        if (k & 1) {
+            printf("Device: Multiplying in power calculation, k=%d\n", k);
+            
+            // 打印矩阵维度信息
+            printf("Device: Matrix multiply dimensions - result(%d,%d) * base(%d,%d)\n",
+                   result.rows, result.cols, base.rows, base.cols);
+                   
+            dim3 blockSize(16, 16);
+            dim3 gridSize(
+                (cols + blockSize.x - 1) / blockSize.x,
+                (rows + blockSize.y - 1) / blockSize.y
+            );
+            
+            size_t sharedMemSize = 2 * blockSize.x * blockSize.y * sizeof(FiniteField);
+            
+            // 直接计算矩阵乘法，不使用kernel
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    FiniteField sum = FiniteField::fromParts(0, 0);
+                    for (int k = 0; k < cols; k++) {
+                        sum = (sum + result.at(i, k) * base.at(k, j)).mod();
+                    }
+                    temp.at(i, j) = sum;
+                }
+            }
+            result = temp;
+        }
+        
+        if (k > 1) {
+            printf("Device: Squaring base in power calculation, k=%d\n", k);
+            
+            // 直接计算矩阵平方
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    FiniteField sum = FiniteField::fromParts(0, 0);
+                    for (int k = 0; k < cols; k++) {
+                        sum = (sum + base.at(i, k) * base.at(k, j)).mod();
+                    }
+                    temp.at(i, j) = sum;
+                }
+            }
+            base = temp;
+        }
+        
+        k >>= 1;
+    }
+    
+    printf("Device: Completed power calculation\n");
+    return result;
+}
+
+__device__ FiniteField Matrix::deviceTrace() const {
+    FiniteField trace = FiniteField::fromParts(0, 0);
+    for (int i = 0; i < this->getRows(); ++i) {
+        trace = trace + this->at(i, i);  // 累加对角线元素
+    }
+    return trace;
 }

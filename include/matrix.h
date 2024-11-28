@@ -7,7 +7,7 @@
 #include <cusolverDn.h>
 #include <cublas_v2.h>
 
-#define MAX_MATRIX_SIZE 64  // 最大矩阵大小
+#define MAX_MATRIX_SIZE 8  // 最大矩阵大小
 
 class Matrix {
 private:
@@ -46,7 +46,6 @@ public:
     __device__ __host__ Matrix operator*(const Matrix& other) const;
     __device__ __host__ Matrix operator*(const FiniteField& scalar) const;
     __device__ __host__ FiniteField determinant() const;
-    __device__ __host__ FiniteField calculateSumOfAll3x3Subdeterminants() const;
 
     // GPU相关操作
     __host__ static Matrix createDeviceMatrix(int rows, int cols);
@@ -55,6 +54,9 @@ public:
     __host__ void copyToDevice(Matrix& d_matrix) const;
     __host__ void copyFromDevice(const Matrix& d_matrix);
     __host__ bool validateDevicePointer() const;
+    __device__ Matrix devicePower(int k) const;
+    __device__ FiniteField deviceTrace() const;
+    __device__ Polynomial characteristicPolynomialDevice() const;
 
     // 矩阵属性和操作
     __host__ __device__ bool isInvertible() const;
@@ -63,8 +65,22 @@ public:
 
 
     // 静态方法
-    __host__ __device__ static Matrix identity(int size);
-    __host__ __device__ static Matrix zero(int rows, int cols);
+    __host__ __device__ static Matrix identity(int size) {
+        Matrix result(size, size);
+        for (int i = 0; i < size; i++) {
+            result.at(i, i) = FiniteField::fromParts(0, 1);
+        }
+        return result;
+    }
+    __host__ __device__ static Matrix zero(int rows, int cols) {
+        Matrix result(rows, cols);
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result.at(i, j) = FiniteField::fromParts(0, 0);
+            }
+        }
+        return result;
+    }
 
     // 检查矩阵是否为零矩阵
     __device__ __host__ bool isZero() const {
@@ -80,7 +96,6 @@ public:
 
     // 计算特征多项式
     __device__ __host__ Polynomial characteristicPolynomial() const;
-    __device__ __host__ Polynomial characteristicPolynomialIterative() const;
     __device__ __host__ Matrix power(int k) const;
     __device__ __host__ FiniteField trace() const;
     // 计算最小多项式

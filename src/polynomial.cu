@@ -63,7 +63,7 @@ __device__ __host__ void Polynomial::setCoefficient(int power, const FiniteField
     coefficients[power] = value;
     if (power > deg && !value.isZero()) {
         deg = power;
-    } else if (power == deg && value.isZero()) {
+    } else if (power == deg && value.isZero()) {    
         updateDegree();
     }
 }
@@ -242,16 +242,43 @@ __device__ __host__ bool Polynomial::isIrreducible() const {
     return gcd(diff).degree() == 0;
 }
 
-std::ostream& operator<<(std::ostream& os, const Polynomial& poly) {
-    os << "Polynomial (degree " << poly.degree() << "):" << std::endl;
-    for(int i = 0; i <= poly.degree(); i++) {
-        FiniteField coeff = poly[i];
-        // 如果系数大于 p/2，说明是负数
-        if(coeff.getLow() > FiniteField::getModule().low/2) {
-            coeff = -coeff;  // 转换为正数表示
-            os << "-";
-        }
-        os << "  coefficient of x^" << i << " = " << coeff << std::endl;
+__host__ std::string Polynomial::toString() const {
+    if (isZero()) {
+        return "0";
     }
-    return os;
+
+    std::ostringstream oss;
+
+    for (int i = deg; i >= 0; --i) {
+        FiniteField coeff = coefficients[i];
+        if (coeff.isZero()) {
+            continue;
+        }
+
+        // 将负数转换为对应的非负数（有限域中等价）
+        if (coeff.isNegative()) {
+            coeff = coeff.mod();  // coeff = (p - abs(coeff)) in modular arithmetic
+        }
+
+        // 处理正负号
+        if (i != deg) {  // 非首项处理符号
+            oss << " + ";
+        }
+
+        // 处理系数部分
+        if (i == 0 || !coeff.isOne()) {  // 常数项或系数非1时需要显示系数
+            oss << coeff;  // `operator<<` 输出 coeff 的非负表示
+        }
+
+        // 处理幂次部分
+        if (i > 0) {
+            oss << "x";
+            if (i > 1) {
+                oss << "^" << i;
+            }
+        }
+    }
+
+    return oss.str();
 }
+

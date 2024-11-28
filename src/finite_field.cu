@@ -30,6 +30,7 @@ __device__ __host__ FiniteField FiniteField::operator+(const FiniteField& other)
     FiniteField result;
     result.value.low = value.low + other.value.low;
     result.value.high = value.high + other.value.high;
+    result = result.mod();
     return result;
 }
 
@@ -49,6 +50,7 @@ __device__ __host__ FiniteField FiniteField::operator-(const FiniteField& other)
         result.value.low = temp.low + value.low;
         result.value.high = temp.high + value.high + (result.value.low < temp.low ? 1 : 0);
     }
+    result = result.mod();
     return result;
 }
 
@@ -233,3 +235,31 @@ __host__ __device__ FiniteField FiniteField::mod() const {
     result.value = mod256(value);
     return result;
 }
+
+__device__ __host__ bool FiniteField::isOne() const {
+    uint256_t one;
+    one.high = 0;
+    one.low = 1;  // 在模数 P 下的值为 1
+    return value.high == one.high && value.low == one.low;
+}
+
+__device__ __host__ FiniteField FiniteField::abs() const {
+    return *this;  // 有限域中的数本身即为其绝对值
+}
+
+std::ostream& operator<<(std::ostream& os, const FiniteField& value) {
+    // 打印有限域元素的高低部分
+    uint64_t high_high = static_cast<uint64_t>(value.value.high >> 64);
+    uint64_t high_low = static_cast<uint64_t>(value.value.high);
+    uint64_t low_high = static_cast<uint64_t>(value.value.low >> 64);
+    uint64_t low_low = static_cast<uint64_t>(value.value.low);
+    
+    os << "0x"
+       << std::hex << std::setw(16) << std::setfill('0') << high_high
+       << std::setw(16) << high_low
+       << std::setw(16) << low_high
+       << std::setw(16) << low_low;
+    
+    return os;
+}
+

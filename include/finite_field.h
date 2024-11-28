@@ -63,8 +63,31 @@ public:
     __device__ __host__ uint128_t getHigh() const { return value.high; }
     __device__ __host__ uint128_t getLow() const { return value.low; }
     
-    // 自定义输出函数
-    void print(std::ostream& os) const {
+    // 添加设备端打印方法
+    __device__ __host__ void print() const {
+        #ifdef __CUDA_ARCH__
+        // 设备端打印
+        printf("0x%016llx%016llx%016llx%016llx",
+            static_cast<unsigned long long>(value.high >> 64),
+            static_cast<unsigned long long>(value.high),
+            static_cast<unsigned long long>(value.low >> 64),
+            static_cast<unsigned long long>(value.low));
+        #else
+        // 主机端打印
+        std::cout << "0x" 
+                  << std::hex << std::setw(16) << std::setfill('0') 
+                  << static_cast<uint64_t>(value.high >> 64)
+                  << std::setw(16) << std::setfill('0') 
+                  << static_cast<uint64_t>(value.high)
+                  << std::setw(16) << std::setfill('0') 
+                  << static_cast<uint64_t>(value.low >> 64)
+                  << std::setw(16) << std::setfill('0') 
+                  << static_cast<uint64_t>(value.low);
+        #endif
+    }
+    
+    // 原来的 print 方法改名为 printToStream
+    void printToStream(std::ostream& os) const {
         uint64_t high_high = static_cast<uint64_t>(value.high >> 64);
         uint64_t high_low = static_cast<uint64_t>(value.high);
         uint64_t low_high = static_cast<uint64_t>(value.low >> 64);
@@ -84,6 +107,7 @@ public:
     __device__ __host__ FiniteField operator/(const FiniteField& other) const;
     __device__ __host__ bool operator==(const FiniteField& other) const;
     __device__ __host__ FiniteField& operator=(const FiniteField& other);
+    friend std::ostream& operator<<(std::ostream& os, const FiniteField& value);
     __host__ __device__ FiniteField mod() const;  // 新增的公共方法
     // 计算乘法逆元
     __device__ __host__ FiniteField inverse() const;
@@ -94,6 +118,9 @@ public:
         half_p.low = getP().low / 2;
         return value.low > half_p.low;
     }
+    __device__ __host__ bool isOne() const;  // 判断是否为1
+    __device__ __host__ FiniteField abs() const;  // 返回绝对值
+
 };
 
 #endif // FINITE_FIELD_H
