@@ -46,6 +46,7 @@ public:
     __device__ __host__ Matrix operator*(const Matrix& other) const;
     __device__ __host__ Matrix operator*(const FiniteField& scalar) const;
     __device__ __host__ FiniteField determinant() const;
+    __device__ __host__ FiniteField calculateSumOfAll3x3Subdeterminants() const;
 
     // GPU相关操作
     __host__ static Matrix createDeviceMatrix(int rows, int cols);
@@ -80,6 +81,8 @@ public:
     // 计算特征多项式
     __device__ __host__ Polynomial characteristicPolynomial() const;
     __device__ __host__ Polynomial characteristicPolynomialIterative() const;
+    __device__ __host__ Matrix power(int k) const;
+    __device__ __host__ FiniteField trace() const;
     // 计算最小多项式
     __device__ __host__ Polynomial minimalPolynomial() const;
 };

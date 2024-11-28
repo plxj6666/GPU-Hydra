@@ -470,76 +470,42 @@ __device__ __host__ Polynomial Matrix::characteristicPolynomial() const {
         #endif
     }
 
+    const int n = rows;
     Polynomial charPoly;
-    
-    if (rows == 2) {
-        // 对于2x2矩阵，特征多项式为 det(xI - A) = x^2 - tr(A)x + det(A)
-        FiniteField trace = (at(0,0) + at(1,1)).mod();
-        FiniteField det = (at(0,0) * at(1,1) - at(0,1) * at(1,0)).mod();
-        
-        charPoly.setCoefficient(2, FiniteField::fromParts(0,1));
-        charPoly.setCoefficient(1, (-trace).mod());
-        charPoly.setCoefficient(0, det.mod());
+
+    // 使用固定大小的数组存储系数和幂和
+    FiniteField c[MAX_MATRIX_SIZE + 1]; // 特征多项式的系数
+    FiniteField p[MAX_MATRIX_SIZE + 1]; // 幂和（迹的累积）
+    // 初始化数组
+    for (int i = 0; i <= n; ++i) {
+        c[i] = FiniteField::fromParts(0, 0);
+        p[i] = FiniteField::fromParts(0, 0);
     }
-    else if (rows == 3) {
-        // 对于3x3矩阵，特征多项式为 det(xI - A)
-        FiniteField trace = (at(0,0) + at(1,1) + at(2,2)).mod();
-        
-        // 计算二次项系数
-        FiniteField s2 = FiniteField::fromParts(0,0);
-        for(int i = 0; i < 3; i++) {
-            for(int j = 0; j < 3; j++) {
-                s2 = (s2 + at(i,j) * at(j,i)).mod();
-            }
+
+    c[n] = FiniteField::fromParts(0, 1); // λ^n 的系数为 1
+
+    for (int k = 1; k <= n; ++k) {
+        // 计算 A^k 的迹
+        Matrix Ak = this->power(k); // 计算 A 的 k 次幂
+        p[k] = Ak.trace(); // 计算迹并存储
+
+        // 根据牛顿恒等式计算系数
+        FiniteField sum = FiniteField::fromParts(0, 0);
+        for (int j = 1; j < k; ++j) {
+            sum = (sum + c[n - j] * p[k - j]).mod();
         }
-        s2 = (s2 - trace * trace).mod();
-        s2 = (s2 / FiniteField::fromParts(0,2)).mod();
-        
-        // 计算行列式
-        FiniteField det = (at(0,0) * (at(1,1) * at(2,2) - at(1,2) * at(2,1)) -
-                          at(0,1) * (at(1,0) * at(2,2) - at(1,2) * at(2,0)) +
-                          at(0,2) * (at(1,0) * at(2,1) - at(1,1) * at(2,0))).mod();
-        
-        charPoly.setCoefficient(3, FiniteField::fromParts(0,1));
-        charPoly.setCoefficient(2, (-trace).mod());
-        charPoly.setCoefficient(1, (-s2).mod());
-        charPoly.setCoefficient(0, (-det).mod());
+        c[n - k] = (-p[k] - sum) / FiniteField::fromParts(0, k);
     }
-    else if (rows == 4) {
-        FiniteField trace = (at(0,0) + at(1,1) + at(2,2) + at(3,3)).mod();
-        
-        // 计算二次项系数
-        FiniteField s2 = FiniteField::fromParts(0,0);
-        for(int i = 0; i < 4; i++) {
-            for(int j = 0; j < 4; j++) {
-                s2 = (s2 + at(i,j) * at(j,i)).mod();
-            }
-        }
-        s2 = ((s2 - trace * trace) / FiniteField::fromParts(0,2)).mod();
-        
-        // 计算三次项系数
-        FiniteField s3 = FiniteField::fromParts(0,0);
-        for(int i = 0; i < 4; i++) {
-            for(int j = 0; j < 4; j++) {
-                for(int k = 0; k < 4; k++) {
-                    s3 = (s3 + at(i,j) * at(j,k) * at(k,i)).mod();
-                }
-            }
-        }
-        s3 = ((s3 - trace * s2 * FiniteField::fromParts(0,3) - trace * trace * trace) / FiniteField::fromParts(0,3)).mod();
-        
-        // 计算行列式
-        FiniteField det = determinant().mod();
-        
-        charPoly.setCoefficient(4, FiniteField::fromParts(0,1));
-        charPoly.setCoefficient(3, (-trace).mod());
-        charPoly.setCoefficient(2, s2.mod());
-        charPoly.setCoefficient(1, (-s3).mod());
-        charPoly.setCoefficient(0, det.mod());
+
+    // 将系数设置到 Polynomial 对象中
+    for (int i = 0; i <= n; ++i) {
+        charPoly.setCoefficient(i, c[i]);
     }
-    
+
     return charPoly;
 }
+
+
 
 __device__ __host__ Polynomial Matrix::minimalPolynomial() const {
     // 首先计算特征多项式
@@ -613,4 +579,89 @@ __device__ __host__ Matrix Matrix::operator*(const Matrix& other) const {
     }
     
     return result;
+}
+
+__device__ __host__ Matrix Matrix::power(int k) const {
+    if (rows != cols) {
+        #ifdef __CUDA_ARCH__
+        return Matrix();
+        #else
+        throw std::runtime_error("Matrix must be square to compute power");
+        #endif
+    }
+
+    // 初始化单位矩阵
+    Matrix result(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            result.at(i, j) = (i == j) ? FiniteField::fromParts(0, 1) : FiniteField::fromParts(0, 0);
+        }
+    }
+
+    // 拷贝当前矩阵
+    Matrix base = *this;
+
+    // 快速幂算法
+    while (k > 0) {
+        if (k % 2 == 1) {
+            result = result * base; // 奇数时将 base 累乘到结果
+        }
+        base = base * base; // base 平方
+        k /= 2; // 指数减半
+    }
+
+    return result;
+}
+
+
+__device__ __host__ FiniteField Matrix::trace() const {
+    if (rows != cols) {
+        #ifdef __CUDA_ARCH__
+        return FiniteField::fromParts(0, 0);
+        #else
+        throw std::runtime_error("Matrix must be square to compute trace");
+        #endif
+    }
+
+    FiniteField trace = FiniteField::fromParts(0, 0);
+
+    // 累加主对角线元素
+    for (int i = 0; i < rows; ++i) {
+        trace = (trace + at(i, i)).mod();
+    }
+
+    return trace;
+}
+
+
+
+
+FiniteField Matrix::calculateSumOfAll3x3Subdeterminants() const {
+    FiniteField sum = FiniteField::fromParts(0,0);  // 初始和为0
+
+    // 遍历每个3x3子矩阵
+    for (int excludedRow = 0; excludedRow < 4; ++excludedRow) {
+        for (int excludedCol = 0; excludedCol < 4; ++excludedCol) {
+            // 创建3x3子矩阵
+            Matrix subMatrix(3, 3);
+            int subi = 0;
+            for (int i = 0; i < 4; ++i) {
+                if (i == excludedRow) continue; // 跳过排除的行
+
+                int subj = 0;
+                for (int j = 0; j < 4; ++j) {
+                    if (j == excludedCol) continue; // 跳过排除的列
+
+                    subMatrix.at(subi, subj) = this->at(i, j);
+                    subj++;
+                }
+                subi++;
+            }
+
+            // 计算当前3x3子矩阵的行列式并加到总和中
+            sum = (sum + subMatrix.determinant()).mod();
+        }
+    }
+
+    return sum;
 }
