@@ -50,13 +50,9 @@ public:
     // GPU相关操作
     __host__ static Matrix createDeviceMatrix(int rows, int cols);
     __host__ static Matrix deviceAdd(const Matrix& A, const Matrix& B);
-    __host__ static Matrix deviceMultiply(const Matrix& A, const Matrix& B);
     __host__ void copyToDevice(Matrix& d_matrix) const;
     __host__ void copyFromDevice(const Matrix& d_matrix);
     __host__ bool validateDevicePointer() const;
-    __device__ Matrix devicePower(int k) const;
-    __device__ FiniteField deviceTrace() const;
-    __device__ Polynomial characteristicPolynomialDevice() const;
 
     // 矩阵属性和操作
     __host__ __device__ bool isInvertible() const;
@@ -104,6 +100,5 @@ public:
 
 // CUDA核函数声明
 __global__ void matrixAddKernel(const Matrix* A, const Matrix* B, Matrix* C);
-__global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C);
 
 #endif // MATRIX_H
