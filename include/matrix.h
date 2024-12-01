@@ -29,7 +29,7 @@ public:
     // 基本访问方法
     __host__ __device__ int getRows() const { return rows; }
     __host__ __device__ int getCols() const { return cols; }
-    __host__ __device__ FiniteField* getData() { return data; }
+    __host__ __device__ FiniteField* getData() const{ return data; }
     __host__ __device__ inline FiniteField& at(int i, int j) {
         assert(i >= 0 && i < rows);
         assert(j >= 0 && j < cols);
@@ -46,6 +46,7 @@ public:
     __device__ __host__ Matrix operator*(const Matrix& other) const;
     __device__ __host__ Matrix operator*(const FiniteField& scalar) const;
     __device__ __host__ FiniteField determinant() const;
+    __host__ Matrix multiplyMatrices(const Matrix& A, const Matrix& B) const;
 
     // GPU相关操作
     __host__ static Matrix createDeviceMatrix(int rows, int cols);
@@ -91,14 +92,14 @@ public:
     }
 
     // 计算特征多项式
-    __device__ __host__ Polynomial characteristicPolynomial() const;
-    __device__ __host__ Matrix power(int k) const;
-    __device__ __host__ FiniteField trace() const;
+    __host__ Polynomial characteristicPolynomial() const;
+    __host__ Matrix power(int k) const;
+    __host__ FiniteField trace() const;
     // 计算最小多项式
-    __device__ __host__ Polynomial minimalPolynomial() const;
+    __host__ Polynomial minimalPolynomial() const;
 };
 
 // CUDA核函数声明
 __global__ void matrixAddKernel(const Matrix* A, const Matrix* B, Matrix* C);
-
+__global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C);
 #endif // MATRIX_H

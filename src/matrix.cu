@@ -4,6 +4,7 @@
 #include <random>
 #include <sstream>
 #include <cstdio>
+#include <iomanip>
 
 #define CHECK_CUDA_ERROR(call) \
     do { \
@@ -14,35 +15,6 @@
             exit(EXIT_FAILURE); \
         } \
     } while(0)
-
-// CUDA核函数 - 矩阵加法
-__global__ void matrixAddKernel(const Matrix* A, const Matrix* B, Matrix* C) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int idy = blockIdx.y * blockDim.y + threadIdx.y;
-    
-    if (idx < A->getCols() && idy < A->getRows()) {
-        C->at(idy, idx) = A->at(idy, idx) + B->at(idy, idx);
-    }
-}
-
-// // CUDA核函数 - 矩阵乘法
-// __global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C) {
-//     int row = blockIdx.y * blockDim.y + threadIdx.y;
-//     int col = blockIdx.x * blockDim.x + threadIdx.x;
-    
-//     if (row < A->getRows() && col < B->getCols()) {
-//         FiniteField sum = FiniteField::fromParts(0,0);
-        
-//         for (int k = 0; k < A->getCols(); k++) {
-//             FiniteField a = A->at(row, k);
-//             FiniteField b = B->at(k, col);
-//             FiniteField prod = a * b;
-//             sum = sum + prod;
-//         }
-        
-//         C->at(row, col) = sum;
-//     }
-// }
 
 // 构造函数
 __host__ __device__ Matrix::Matrix(int r, int c) : rows(r), cols(c), is_device(false) {
@@ -111,6 +83,22 @@ __host__ __device__ Matrix::Matrix(const Matrix& other) :
         }
     #endif
 }
+__host__ __device__ Matrix::~Matrix() {
+    if (data != nullptr) {
+        #ifdef __CUDA_ARCH__
+            // 在设备端
+            free(data);
+        #else
+            // 在主机端
+            if (is_device) {
+                cudaFree(data);
+            } else {
+                cudaFreeHost(data);  // 使用cudaFreeHost替代delete[]
+            }
+        #endif
+        data = nullptr;
+    }
+}
 
 // 赋值运算符
 __host__ __device__ Matrix& Matrix::operator=(const Matrix& other) {
@@ -155,6 +143,63 @@ __host__ __device__ Matrix& Matrix::operator=(const Matrix& other) {
         #endif
     }
     return *this;
+}
+
+__device__ __host__ Matrix Matrix::operator*(const Matrix& other) const {
+    if (cols != other.rows) {
+        #ifdef __CUDA_ARCH__
+        return Matrix();  // 在设备端返回空矩阵
+        #else
+        throw std::runtime_error("Matrix dimensions mismatch for multiplication");
+        #endif
+    }
+    printf("now we have device multiply!, please change the code to use cuda kernel\n");
+    Matrix result(rows, other.cols);
+    
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < other.cols; j++) {
+            FiniteField sum = FiniteField::fromParts(0, 0);
+            for (int k = 0; k < cols; k++) {
+                sum = sum + (at(i, k) * other.at(k, j));
+            }
+            result.at(i, j) = sum;
+        }
+    }
+    
+    return result;
+}
+
+
+__host__ Matrix Matrix::power(int exponent) const {
+    Matrix temp = *this;
+    Matrix result = Matrix::identity(temp.getRows());
+    while (exponent > 0) {
+        if (exponent % 2 == 1) {
+            result = multiplyMatrices(result, temp);  // 调用优化的矩阵乘法
+        }
+        temp = multiplyMatrices(temp, temp);
+        exponent >>= 1;
+    }
+    return result;
+}
+
+__host__ FiniteField Matrix::trace() const {
+    if (rows != cols) {
+        #ifdef __CUDA_ARCH__
+        return FiniteField::fromParts(0, 0);
+        #else
+        throw std::runtime_error("Matrix must be square to compute trace");
+        #endif
+    }
+
+    FiniteField trace = FiniteField::fromParts(0, 0);
+
+    // 累加主对角线元素
+    for (int i = 0; i < rows; ++i) {
+        trace = (trace + at(i, i)).mod(); // 每次累加后取模
+    }
+
+    return trace;
 }
 
 // 在设备上创建矩阵
@@ -241,16 +286,35 @@ __host__ void Matrix::randomize() {
 // 转换为字符串
 __host__ std::string Matrix::toString() const {
     std::ostringstream oss;
+    
+    // 计算每个元素的最大宽度
+    size_t maxWidth = 0;
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            oss << "M[" << i << "][" << j << "] = ";
-            #ifdef __CUDA_ARCH__
-            data[i * cols + j].print();  // 在设备端使用 print
-            #else
-            data[i * cols + j].printToStream(oss);  // 在主机端使用 printToStream
-            #endif
-            oss << "\n";
+            std::ostringstream temp;
+            data[i * cols + j].printToStream(temp);
+            maxWidth = std::max(maxWidth, temp.str().length());
         }
+    }
+    
+    // 打印矩阵
+    oss << "\n";  // 先换行，让输出更清晰
+    for (int i = 0; i < rows; ++i) {
+        oss << "[ ";  // 每行开始
+        for (int j = 0; j < cols; ++j) {
+            std::ostringstream temp;
+            data[i * cols + j].printToStream(temp);
+            std::string value = temp.str();
+            
+            // 右对齐并填充空格
+            oss << std::setw(maxWidth) << value;
+            
+            // 在元素之间添加分隔符，最后一个元素后不添加
+            if (j < cols - 1) {
+                oss << " | ";
+            }
+        }
+        oss << " ]" << std::endl;  // 每行结束
     }
     return oss.str();
 }
@@ -265,20 +329,7 @@ __host__ bool Matrix::validateDevicePointer() const {
 __host__ __device__ bool Matrix::isInvertible() const {
     if (rows != cols) {
         return false;  // 非方阵一定不可逆
-    }
-    
-    // 已经解决列数大于8问题
-    // #ifdef __CUDA_ARCH__
-    // if (rows > 8) {
-    //     // 在设备端，我们不能抛出异常
-    //     return false;
-    // }
-    // #else
-    // if (rows > 4) {
-    //     throw std::runtime_error("Matrix size larger than 4x4 is not supported");
-    // }
-    // #endif
-    
+    }    
     FiniteField det = determinant();
     return !(det == FiniteField::fromParts(0,0));
 }
@@ -411,27 +462,7 @@ __device__ __host__ FiniteField Matrix::determinantLU() const {
     return det;
 }
 
-__host__ __device__ Matrix::~Matrix() {
-    if (data != nullptr) {
-        #ifdef __CUDA_ARCH__
-            // 在设备端
-            free(data);
-        #else
-            // 在主机端
-            if (is_device) {
-                cudaFree(data);
-            } else {
-                cudaFreeHost(data);  // 使用cudaFreeHost替代delete[]
-            }
-        #endif
-        data = nullptr;
-    }
-}
-
-__device__ __host__ Polynomial Matrix::characteristicPolynomial() const {
-    #ifdef __CUDA_ARCH__
-        // return characteristicPolynomialDevice();
-    #else 
+__host__ Polynomial Matrix::characteristicPolynomial() const {
         printf("Host: Starting characteristic polynomial calculation\n");
         const int n = rows;
         Polynomial charPoly;
@@ -470,14 +501,13 @@ __device__ __host__ Polynomial Matrix::characteristicPolynomial() const {
         }
         
         return charPoly;
-    #endif
 }
 
 
 
 
-__device__ __host__ Polynomial Matrix::minimalPolynomial() const {
-    // 首先计���特征多项式
+__host__ Polynomial Matrix::minimalPolynomial() const {
+    // 首先计特征多项式
     Polynomial charPoly = characteristicPolynomial();
     
     // 计算导数
@@ -508,80 +538,98 @@ __device__ __host__ Polynomial Matrix::minimalPolynomial() const {
     return minPoly;
 }
 
+__host__ Matrix Matrix::multiplyMatrices(const Matrix& A, const Matrix& B) const {
+    // 分配设备内存：Matrix对象
+    Matrix *d_A, *d_B, *d_C;
+    cudaMalloc(&d_A, sizeof(Matrix));
+    cudaMalloc(&d_B, sizeof(Matrix));
+    cudaMalloc(&d_C, sizeof(Matrix));
 
-__device__ __host__ Matrix Matrix::operator*(const Matrix& other) const {
-    if (cols != other.rows) {
-        #ifdef __CUDA_ARCH__
-        return Matrix();  // 在设备端返回空矩阵
-        #else
-        throw std::runtime_error("Matrix dimensions mismatch for multiplication");
-        #endif
+    // 分配设备内存：矩阵数据
+    FiniteField *d_A_data, *d_B_data, *d_C_data;
+    int A_size = A.getRows() * A.getCols() * sizeof(FiniteField);
+    int B_size = B.getRows() * B.getCols() * sizeof(FiniteField);
+    int C_size = A.getRows() * B.getCols() * sizeof(FiniteField);
+    cudaMalloc(&d_A_data, A_size);
+    cudaMalloc(&d_B_data, B_size);
+    cudaMalloc(&d_C_data, C_size);
+
+    // 初始化结果矩阵的数据为0
+    cudaMemset(d_C_data, 0, C_size);
+
+    // 复制输入矩阵的数据到设备
+    cudaMemcpy(d_A_data, A.getData(), A_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B_data, B.getData(), B_size, cudaMemcpyHostToDevice);
+
+    // 创建设备端Matrix对象的主机副本
+    Matrix h_A = A;
+    Matrix h_B = B;
+    Matrix h_C(A.getRows(), B.getCols());
+    
+    // 更新data指针为设备内存地址
+    h_A.data = d_A_data;
+    h_B.data = d_B_data;
+    h_C.data = d_C_data;
+
+    // 复制Matrix对象到设备（包含了rows、cols和更新后的data指针）
+    cudaMemcpy(d_A, &h_A, sizeof(Matrix), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, &h_B, sizeof(Matrix), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C, &h_C, sizeof(Matrix), cudaMemcpyHostToDevice);
+    
+    // 设置网格和块的维度
+    int rows = A.getRows();
+    dim3 blockSize(rows, rows);
+    dim3 gridSize(1, 1);
+    
+    // 调用核函数
+    matrixMultiplyKernel<<<gridSize, blockSize>>>(d_A, d_B, d_C);
+    
+    // 检查并同步
+    cudaDeviceSynchronize();
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        std::cerr << "CUDA error: " << cudaGetErrorString(error) << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    Matrix result(rows, other.cols);
+    // 创建结果矩阵
+    Matrix C(A.getRows(), B.getCols());
+    cudaMemcpy(C.data, d_C_data, C_size, cudaMemcpyDeviceToHost);
     
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < other.cols; j++) {
-            FiniteField sum = FiniteField::fromParts(0, 0);
-            for (int k = 0; k < cols; k++) {
-                sum = sum + (at(i, k) * other.at(k, j));
-            }
-            result.at(i, j) = sum;
-        }
-    }
+    // 释放设备内存
+    cudaFree(d_A_data);
+    cudaFree(d_B_data);
+    cudaFree(d_C_data);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
     
-    return result;
+    return C;
 }
 
-__device__ __host__ Matrix Matrix::power(int k) const {
-    if (rows != cols) {
-        #ifdef __CUDA_ARCH__
-        return Matrix();
-        #else
-        throw std::runtime_error("Matrix must be square to compute power");
-        #endif
+
+// CUDA核函数 - 矩阵加法
+__global__ void matrixAddKernel(const Matrix* A, const Matrix* B, Matrix* C) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idy = blockIdx.y * blockDim.y + threadIdx.y;
+    
+    if (idx < A->getCols() && idy < A->getRows()) {
+        C->at(idy, idx) = A->at(idy, idx) + B->at(idy, idx);
     }
-
-    // 初始化单位矩阵
-    Matrix result(rows, cols);
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            result.at(i, j) = (i == j) ? FiniteField::fromParts(0, 1) : FiniteField::fromParts(0, 0);
-        }
-    }
-
-    // 拷贝当前矩阵
-    Matrix base = *this;
-
-    // 快速幂算法
-    while (k > 0) {
-        if (k % 2 == 1) {
-            result = result * base; // 奇数时将 base 累乘到结果
-        }
-        base = base * base; // base 平方
-        k /= 2; // 指数减半
-    }
-
-    return result;
 }
 
 
+__global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= A->getRows() || col >= B->getCols()) return; // 早期返回，防止越界访问
+    FiniteField sum = FiniteField::fromParts(0, 0);
 
-__device__ __host__ FiniteField Matrix::trace() const {
-    if (rows != cols) {
-        #ifdef __CUDA_ARCH__
-        return FiniteField::fromParts(0, 0);
-        #else
-        throw std::runtime_error("Matrix must be square to compute trace");
-        #endif
+    for (int k = 0; k < A->getCols(); k++) {
+        FiniteField a = A->at(row, k);
+        FiniteField b = B->at(k, col);
+        FiniteField prod = a * b;
+        sum = sum + prod;
     }
-
-    FiniteField trace = FiniteField::fromParts(0, 0);
-
-    // 累加主对角线元素
-    for (int i = 0; i < rows; ++i) {
-        trace = (trace + at(i, i)).mod(); // 每次累加后取模
-    }
-
-    return trace;
+    C->at(row, col) = sum;
 }
