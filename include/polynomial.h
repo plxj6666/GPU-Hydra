@@ -23,6 +23,7 @@ public:
     __device__ __host__ int degree() const { return deg; }
     __device__ __host__ bool isZero() const { return deg == -1; }
     __device__ __host__ FiniteField leadingCoefficient() const;
+    __device__ __host__ bool isOne() const;
     
     // 系数访问
     __device__ __host__ const FiniteField& operator[](int i) const;
@@ -39,6 +40,7 @@ public:
     // 规范化和模运算
     __device__ __host__ void normalize();  // 使最高次项系数为1
     __device__ __host__ void modInField();  // 确保所有系数在有限域中
+    __device__ __host__ Polynomial modPow(const FiniteField& exponent, const Polynomial& modulus) const;  // 快速幂取模
     
     // 特殊操作
     __device__ __host__ bool isIrreducible() const;  // 判断是否不可约

@@ -41,10 +41,13 @@ public:
         return data[i * cols + j];
     }
 
+
     // 基本运算
     __device__ __host__ Matrix operator+(const Matrix& other) const;
     __device__ __host__ Matrix operator*(const Matrix& other) const;
     __device__ __host__ Matrix operator*(const FiniteField& scalar) const;
+    // 添加矩阵与FiniteFieldArray相乘的运算符
+    __device__ __host__ FiniteFieldArray operator*(const FiniteFieldArray& vec) const;
     __device__ __host__ FiniteField determinant() const;
     __host__ Matrix multiplyMatrices(const Matrix& A, const Matrix& B) const;
 
@@ -97,6 +100,24 @@ public:
     __host__ FiniteField trace() const;
     // 计算最小多项式
     __host__ Polynomial minimalPolynomial() const;
+    __host__ bool check_conditions(const FiniteFieldArray &lambdas, int size);
+    __host__ bool check_minpoly_condition(int size);
+
+    __host__ __device__ void setDevice(bool is_dev) { is_device = is_dev; }
+
+    // 添加 getElements 方法
+    __host__ __device__ FiniteField* getElements() const { return data; }
+
+    // 添加 setElements 方法
+    __host__ __device__ void setElements(FiniteField* new_data) { data = new_data; }
+
+    // 添加一个新方法用于设置设备矩阵
+    __host__ __device__ void setDeviceMatrix(const Matrix& other) {
+        rows = other.rows;
+        cols = other.cols;
+        data = other.data;  // 直接使用指针
+        is_device = true;   // 标记为设备矩阵
+    }
 };
 
 // CUDA核函数声明

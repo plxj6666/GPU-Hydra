@@ -19,19 +19,10 @@ __device__ __host__ uint256_t FiniteField::getP() {
 
 // 运算符实现
 __device__ __host__ FiniteField FiniteField::operator+(const FiniteField& other) const {
-    // 添加调试信息
-    #ifndef __CUDA_ARCH__
-    if (this == nullptr) {
-        printf("Error: null this pointer in operator+\n");
-        return FiniteField();
-    }
-    #endif
-    
     FiniteField result;
     result.value.low = value.low + other.value.low;
-    result.value.high = value.high + other.value.high;
-    result = result.mod();
-    return result;
+    result.value.high = value.high + other.value.high + (result.value.low < value.low ? 1 : 0);
+    return result.mod();
 }
 
 __device__ __host__ FiniteField FiniteField::operator-(const FiniteField& other) const {
@@ -50,8 +41,7 @@ __device__ __host__ FiniteField FiniteField::operator-(const FiniteField& other)
         result.value.low = temp.low + value.low;
         result.value.high = temp.high + value.high + (result.value.low < temp.low ? 1 : 0);
     }
-    result = result.mod();
-    return result;
+    return result.mod();
 }
 
 __device__ __host__ FiniteField FiniteField::operator*(const FiniteField& other) const {
@@ -97,7 +87,7 @@ __device__ __host__ FiniteField FiniteField::operator*(const FiniteField& other)
     //           << std::setw(16) << std::setfill('0') << static_cast<uint64_t>(result.low) << std::endl;
     // #endif
     
-    // 最后进行模运算
+    // 需要自己主动模运算
     result = mod256(result);
     
     FiniteField final_result;
@@ -166,6 +156,14 @@ __device__ __host__ uint256_t FiniteField::mod256(const uint256_t& x) {
 
 __device__ __host__ bool FiniteField::operator==(const FiniteField& other) const {
     return value.high == other.value.high && value.low == other.value.low;
+}
+
+__device__ __host__ bool FiniteField::operator<(const FiniteField& other) const {
+    return value.high < other.value.high || (value.high == other.value.high && value.low < other.value.low);
+}
+
+__device__ __host__ bool FiniteField::operator!=(const FiniteField& other) const {
+    return !(*this == other);
 }
 
 __device__ __host__ FiniteField& FiniteField::operator=(const FiniteField& other) {
@@ -261,5 +259,56 @@ std::ostream& operator<<(std::ostream& os, const FiniteField& value) {
        << std::setw(16) << low_low;
     
     return os;
+}
+
+// 左移运算符实现
+__device__ __host__ FiniteField FiniteField::operator<<(int shift) const {
+    FiniteField result;
+    if (shift >= 256) {
+        result.value.high = 0;
+        result.value.low = 0;
+        return result;
+    }
+    
+    if (shift >= 128) {
+        result.value.high = value.low << (shift - 128);
+        result.value.low = 0;
+    } else {
+        result.value.high = (value.high << shift) | (value.low >> (128 - shift));
+        result.value.low = value.low << shift;
+    }
+    return result;
+}
+
+// 位或运算符实现
+__device__ __host__ FiniteField FiniteField::operator|(const FiniteField& other) const {
+    FiniteField result;
+    result.value.high = value.high | other.value.high;
+    result.value.low = value.low | other.value.low;
+    return result;
+}
+
+__device__ __host__ FiniteField FiniteField::power(const FiniteField& base, uint64_t exponent) {
+    if (exponent == 0) {
+        return FiniteField::fromParts(0, 1);  // 任何数的0次幂都是1
+    }
+    
+    if (exponent == 1) {
+        return base;  // 1次幂就是自身
+    }
+    
+    // 使用快速幂算法
+    FiniteField result = FiniteField::fromParts(0, 1);
+    FiniteField current = base;
+    
+    while (exponent > 0) {
+        if (exponent & 1) {  // 如果当前位是1
+            result = (result * current).mod();
+        }
+        current = (current * current).mod();  // 平方
+        exponent >>= 1;  // 右移一位
+    }
+    
+    return result;
 }
 

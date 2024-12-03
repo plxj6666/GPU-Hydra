@@ -6,7 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
-
+#include <cassert>
 #ifdef __CUDA_ARCH__
 using uint128_t = unsigned __int128;
 #else
@@ -56,13 +56,19 @@ public:
     }
 
     // 获取模数P
-    static __device__ __host__ uint256_t getModule() {
+    static __device__ __host__ FiniteField getFiniteFieldModule() {
+        FiniteField result;
+        result.value = getP();
+        return result;
+    }
+
+    static __device__ __host__ uint256_t getModulevalue() {
         return getP();
     }
     // 获取高低位（现在是128位的高低位）
     __device__ __host__ uint128_t getHigh() const { return value.high; }
     __device__ __host__ uint128_t getLow() const { return value.low; }
-    
+    __device__ __host__ uint256_t getValue() const { return value; }
     // 添加设备端打印方法
     __device__ __host__ void print() const {
         #ifdef __CUDA_ARCH__
@@ -107,6 +113,10 @@ public:
     __device__ __host__ FiniteField operator/(const FiniteField& other) const;
     __device__ __host__ bool operator==(const FiniteField& other) const;
     __device__ __host__ FiniteField& operator=(const FiniteField& other);
+    __device__ __host__ bool operator<(const FiniteField& other) const;
+    __device__ __host__ bool operator!=(const FiniteField& other) const;
+    __device__ __host__ FiniteField operator<<(int shift) const;
+    __device__ __host__ FiniteField operator|(const FiniteField& other) const;
     friend std::ostream& operator<<(std::ostream& os, const FiniteField& value);
     __host__ __device__ FiniteField mod() const;  // 新增的公共方法
     // 计算乘法逆元
@@ -120,7 +130,140 @@ public:
     }
     __device__ __host__ bool isOne() const;  // 判断是否为1
     __device__ __host__ FiniteField abs() const;  // 返回绝对值
+    __device__ __host__ static FiniteField power(const FiniteField& base, uint64_t exponent);
+};
 
+// 有限域元素数组类
+class FiniteFieldArray {
+private:
+    FiniteField* elements;
+    size_t size;
+    bool owns_memory;  // 标记是否需要在析构时释放内存
+
+public:
+    // 构造函数
+    __host__ __device__ FiniteFieldArray() : elements(nullptr), size(0), owns_memory(false) {}
+    
+    __host__ __device__ FiniteFieldArray(size_t n) : size(n), owns_memory(true) {
+        #ifdef __CUDA_ARCH__
+        elements = new FiniteField[n];
+        #else
+        elements = new FiniteField[n];
+        #endif
+    }
+
+    // 析构函数
+    __host__ __device__ ~FiniteFieldArray() {
+        if (owns_memory && elements != nullptr) {
+            #ifdef __CUDA_ARCH__
+            delete[] elements;
+            #else
+            delete[] elements;
+            #endif
+        }
+    }
+
+    // 只保留一个版本的 setElements
+    __host__ __device__ void setElements(FiniteField* new_elements, bool take_ownership = false) {
+        if (owns_memory && elements != nullptr) {
+            #ifdef __CUDA_ARCH__
+            delete[] elements;
+            #else
+            delete[] elements;
+            #endif
+        }
+        elements = new_elements;
+        owns_memory = take_ownership;
+    }
+    
+    // 添加拷贝构造函数
+    __host__ __device__ FiniteFieldArray(const FiniteFieldArray& other) : size(other.size), owns_memory(true) {
+        elements = new FiniteField[size];
+        for (size_t i = 0; i < size; ++i) {
+            elements[i] = other.elements[i];
+        }
+    }
+
+    // 添加赋值运算符
+    __host__ __device__ FiniteFieldArray& operator=(const FiniteFieldArray& other) {
+        if (this != &other) {
+            // 释放原有内存
+            if (elements) {
+                delete[] elements;
+            }
+            
+            // 分配新内存并复制数据
+            size = other.size;
+            elements = new FiniteField[size];
+            for (size_t i = 0; i < size; ++i) {
+                elements[i] = other.elements[i];
+            }
+        }
+        return *this;
+    }
+
+    // 添加获取和设置elements的方法
+    __host__ __device__ FiniteField* getElements() const { return elements; }
+    
+    
+    // 添加更详细的调试打印
+    __device__ void debugPrint() const {
+        printf("FiniteFieldArray debug: size=%zu, elements=%p\n", size, elements);
+        if (elements != nullptr) {
+            printf("First element: ");
+            elements[0].print();
+            printf("\n");
+        }
+    }
+
+    // 数组访问运算符
+    __host__ __device__ FiniteField& operator[](size_t index) {
+        #ifndef __CUDA_ARCH__
+        if (index >= size) {
+            throw std::out_of_range("Index out of range");
+        }
+        #endif
+        return elements[index];
+    }
+
+    __device__ __host__ FiniteFieldArray operator+(const FiniteFieldArray& other) const {
+        assert(size == other.getSize());
+        FiniteFieldArray result(size);
+        for (int i = 0; i < size; ++i) {
+            result[i] = elements[i] + other[i];
+        }
+        return result;
+    };
+
+    __device__ __host__ FiniteFieldArray operator-(const FiniteFieldArray& other) const {
+        assert(size == other.getSize());
+        FiniteFieldArray result(size);
+        for (int i = 0; i < size; ++i) {
+            result[i] = elements[i] - other[i];
+        }
+        return result;
+    };
+    // const 版本的数组访问运算符
+    __host__ __device__ const FiniteField& operator[](size_t index) const {
+        #ifndef __CUDA_ARCH__
+        if (index >= size) {
+            throw std::out_of_range("Index out of range");
+        }
+        #endif
+        return elements[index];
+    }
+    __device__ __host__ FiniteFieldArray mod() const {
+        FiniteFieldArray result(size);
+        for (int i = 0; i < size; ++i) {
+            result[i] = elements[i].mod();
+        }
+        return result;
+    }
+    
+    // 获取数组大小
+    __host__ __device__ size_t getSize() const {
+        return size;
+    }
 };
 
 #endif // FINITE_FIELD_H

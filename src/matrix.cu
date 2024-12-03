@@ -169,6 +169,21 @@ __device__ __host__ Matrix Matrix::operator*(const Matrix& other) const {
     return result;
 }
 
+__device__ __host__ FiniteFieldArray Matrix::operator*(const FiniteFieldArray& vec) const {
+    // 假设矩阵大小为 n x n，向量大小为 n
+    size_t n = vec.getSize();
+    FiniteFieldArray result(n);
+    
+    for (size_t i = 0; i < n; ++i) {
+        FiniteField sum = FiniteField::fromParts(0, 0);
+        for (size_t j = 0; j < n; ++j) {
+            sum = sum + (at(i, j) * vec[j]);
+        }
+        result[i] = sum;
+    }
+    return result;
+}
+
 
 __host__ Matrix Matrix::power(int exponent) const {
     Matrix temp = *this;
@@ -463,7 +478,6 @@ __device__ __host__ FiniteField Matrix::determinantLU() const {
 }
 
 __host__ Polynomial Matrix::characteristicPolynomial() const {
-        printf("Host: Starting characteristic polynomial calculation\n");
         const int n = rows;
         Polynomial charPoly;
         
@@ -478,22 +492,13 @@ __host__ Polynomial Matrix::characteristicPolynomial() const {
         c[n] = FiniteField::fromParts(0, 1);
         
         for (int k = 1; k <= n; ++k) {
-            printf("Host: Computing power %d\n", k);
             Matrix Ak = this->power(k);
-            printf("Host: Matrix power %d computed, calculating trace\n", k);
             p[k] = Ak.trace().mod();
-            printf("Host: Trace for power %d = ", k);
-            p[k].print();
-            printf("\n");
-            
             FiniteField sum = FiniteField::fromParts(0, 0);
             for (int j = 1; j < k; ++j) {
                 sum = (sum + c[n - j] * p[k - j]).mod();
             }
             c[n - k] = ((-p[k] - sum) / FiniteField::fromParts(0, k)).mod();
-            printf("Host: Coefficient c[%d] = ", n-k);
-            c[n - k].print();
-            printf("\n");
         }
         
         for (int i = 0; i <= n; ++i) {
@@ -502,9 +507,6 @@ __host__ Polynomial Matrix::characteristicPolynomial() const {
         
         return charPoly;
 }
-
-
-
 
 __host__ Polynomial Matrix::minimalPolynomial() const {
     // 首先计特征多项式
@@ -539,27 +541,33 @@ __host__ Polynomial Matrix::minimalPolynomial() const {
 }
 
 __host__ Matrix Matrix::multiplyMatrices(const Matrix& A, const Matrix& B) const {
+    // 检查矩阵维度
+    if (A.getCols() != B.getRows()) {
+        throw std::runtime_error("Matrix dimensions mismatch for multiplication");
+    }
+
     // 分配设备内存：Matrix对象
-    Matrix *d_A, *d_B, *d_C;
-    cudaMalloc(&d_A, sizeof(Matrix));
-    cudaMalloc(&d_B, sizeof(Matrix));
-    cudaMalloc(&d_C, sizeof(Matrix));
+    Matrix *d_A = nullptr, *d_B = nullptr, *d_C = nullptr;
+    CHECK_CUDA_ERROR(cudaMalloc(&d_A, sizeof(Matrix)));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_B, sizeof(Matrix)));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_C, sizeof(Matrix)));
 
     // 分配设备内存：矩阵数据
-    FiniteField *d_A_data, *d_B_data, *d_C_data;
-    int A_size = A.getRows() * A.getCols() * sizeof(FiniteField);
-    int B_size = B.getRows() * B.getCols() * sizeof(FiniteField);
-    int C_size = A.getRows() * B.getCols() * sizeof(FiniteField);
-    cudaMalloc(&d_A_data, A_size);
-    cudaMalloc(&d_B_data, B_size);
-    cudaMalloc(&d_C_data, C_size);
+    FiniteField *d_A_data = nullptr, *d_B_data = nullptr, *d_C_data = nullptr;
+    size_t A_size = A.getRows() * A.getCols() * sizeof(FiniteField);
+    size_t B_size = B.getRows() * B.getCols() * sizeof(FiniteField);
+    size_t C_size = A.getRows() * B.getCols() * sizeof(FiniteField);
+    
+    CHECK_CUDA_ERROR(cudaMalloc(&d_A_data, A_size));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_B_data, B_size));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_C_data, C_size));
 
     // 初始化结果矩阵的数据为0
-    cudaMemset(d_C_data, 0, C_size);
+    CHECK_CUDA_ERROR(cudaMemset(d_C_data, 0, C_size));
 
     // 复制输入矩阵的数据到设备
-    cudaMemcpy(d_A_data, A.getData(), A_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B_data, B.getData(), B_size, cudaMemcpyHostToDevice);
+    CHECK_CUDA_ERROR(cudaMemcpy(d_A_data, A.getData(), A_size, cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_B_data, B.getData(), B_size, cudaMemcpyHostToDevice));
 
     // 创建设备端Matrix对象的主机副本
     Matrix h_A = A;
@@ -570,11 +578,14 @@ __host__ Matrix Matrix::multiplyMatrices(const Matrix& A, const Matrix& B) const
     h_A.data = d_A_data;
     h_B.data = d_B_data;
     h_C.data = d_C_data;
+    h_A.is_device = true;
+    h_B.is_device = true;
+    h_C.is_device = true;
 
-    // 复制Matrix对象到设备（包含了rows、cols和更新后的data指针）
-    cudaMemcpy(d_A, &h_A, sizeof(Matrix), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B, &h_B, sizeof(Matrix), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_C, &h_C, sizeof(Matrix), cudaMemcpyHostToDevice);
+    // 复制Matrix对象到设备
+    CHECK_CUDA_ERROR(cudaMemcpy(d_A, &h_A, sizeof(Matrix), cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_B, &h_B, sizeof(Matrix), cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_C, &h_C, sizeof(Matrix), cudaMemcpyHostToDevice));
     
     // 设置网格和块的维度
     int rows = A.getRows();
@@ -585,26 +596,27 @@ __host__ Matrix Matrix::multiplyMatrices(const Matrix& A, const Matrix& B) const
     matrixMultiplyKernel<<<gridSize, blockSize>>>(d_A, d_B, d_C);
     
     // 检查并同步
-    cudaDeviceSynchronize();
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess) {
-        std::cerr << "CUDA error: " << cudaGetErrorString(error) << std::endl;
-        exit(EXIT_FAILURE);
-    }
+    CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+    CHECK_CUDA_ERROR(cudaGetLastError());
 
-    // 创建结果矩阵
-    Matrix C(A.getRows(), B.getCols());
-    cudaMemcpy(C.data, d_C_data, C_size, cudaMemcpyDeviceToHost);
+    // 创建结果矩阵并复制数据
+    Matrix result(A.getRows(), B.getCols());
+    CHECK_CUDA_ERROR(cudaMemcpy(result.data, d_C_data, C_size, cudaMemcpyDeviceToHost));
+    
+    // 在返回之前释放临时对象
+    h_A.data = nullptr;  // 防止析构时重复释放
+    h_B.data = nullptr;
+    h_C.data = nullptr;
     
     // 释放设备内存
-    cudaFree(d_A_data);
-    cudaFree(d_B_data);
-    cudaFree(d_C_data);
-    cudaFree(d_A);
-    cudaFree(d_B);
-    cudaFree(d_C);
+    if (d_A_data) CHECK_CUDA_ERROR(cudaFree(d_A_data));
+    if (d_B_data) CHECK_CUDA_ERROR(cudaFree(d_B_data));
+    if (d_C_data) CHECK_CUDA_ERROR(cudaFree(d_C_data));
+    if (d_A) CHECK_CUDA_ERROR(cudaFree(d_A));
+    if (d_B) CHECK_CUDA_ERROR(cudaFree(d_B));
+    if (d_C) CHECK_CUDA_ERROR(cudaFree(d_C));
     
-    return C;
+    return result;  // 返回结果矩阵
 }
 
 
@@ -632,4 +644,67 @@ __global__ void matrixMultiplyKernel(const Matrix* A, const Matrix* B, Matrix* C
         sum = sum + prod;
     }
     C->at(row, col) = sum;
+}
+    // bool check_minpoly_condition(const Mat<ZZ_p> &M, int size) {
+    //     int max_period = 2 * size;
+    //     Mat<ZZ_p> M_temp = M;
+    //     for (int i = 1; i < max_period; ++i) {
+    //         ZZ_pX charPoly = CharacteristicPolynomial(M_temp);
+    //         ZZ_pX minpoly = MinimalPolynomialFromCharPoly(charPoly);
+    //         cout << "charPoly: " << charPoly << endl;
+    //         cout << "minpoly: " << minpoly << endl;
+    //         if (deg(minpoly) != size || !DetIrredTest(minpoly)) {
+    //             return false;
+    //         }
+    //         M_temp = M * M_temp;
+    //     }
+    //     return true;
+    // }
+__host__ bool Matrix::check_minpoly_condition(int size) {
+    Matrix M_temp = *this;
+    int max_period = 2 * size;
+    for (int i = 1; i < max_period; ++i) {
+        Polynomial minpoly = M_temp.minimalPolynomial();
+        // printf("Mtemp: %s\n", M_temp.toString().c_str());
+        // printf("minpoly: %s\n", minpoly.toString().c_str());
+        // printf("minpoly.degree(): %d\n", minpoly.degree());
+        // printf("minpoly.isIrreducible(): %d\n", minpoly.isIrreducible());
+        // isIrreducible 有问题
+        if (minpoly.degree() != size || !minpoly.isIrreducible()) {
+            return false;
+        }
+        M_temp = this->multiplyMatrices(M_temp, *this);
+        // M_temp = M_temp * (*this);
+    }
+    return true;
+}
+
+__host__ bool Matrix::check_conditions(const FiniteFieldArray &lambdas, int size) {
+    Matrix M_temp = *this;
+    bool isInvertible = this->isInvertible();
+    bool is_minpoly = this->check_minpoly_condition(size);
+    if (!isInvertible || !is_minpoly) {
+        return false;
+    }
+    FiniteField sum_ = FiniteField::fromParts(0, 0);
+    for (int j = 0; j < size; ++j) {
+        FiniteField inner = FiniteField::fromParts(0, 0);
+        for (int l = 0; l < size; ++l) {
+            inner = inner + this->at(j, l);
+        }
+        sum_ = sum_ + lambdas[j] * inner;
+    }
+    if (sum_ == FiniteField::fromParts(0, 0)) {
+        return false;
+    }
+    for (int j = 0; j < size; ++j) {
+        sum_ = FiniteField::fromParts(0, 0);
+        for (int l = 0; l < size; ++l) {
+            sum_ = sum_ + lambdas[l] * this->at(l, j);
+        }
+        if (sum_ == FiniteField::fromParts(0, 0)) {
+            return false;
+        }
+    }   
+    return true;
 }

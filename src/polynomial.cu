@@ -159,6 +159,7 @@ __device__ __host__ Polynomial Polynomial::operator%(const Polynomial& other) co
     Polynomial remainder = *this;
     
     // 主除法循环
+    // 死循环了
     while (remainder.deg >= other.deg && !remainder.isZero()) {
         // 计算当前步骤的商的次数和系数
         int power = remainder.deg - other.deg;
@@ -217,29 +218,72 @@ __device__ __host__ Polynomial Polynomial::gcd(const Polynomial& other) const {
     return other.gcd(*this % other);
 }
 
+
+
 // 判断是否不可约
 __device__ __host__ bool Polynomial::isIrreducible() const {
-    if (deg <= 1) return true;  // 0次和1次多项式都是不可约的
+    int n = degree();
+    if (n <= 1) return true;  // 0次和1次多项式一定不可约
+    if (n > MAX_DEGREE) return false;  // 超出最大次数限制
     
-    // 使用有限域上的不可约性测试
-    Polynomial x;
-    x.deg = 1;
-    x.coefficients[1] = FiniteField::fromParts(0, 1);  // x
+    // 初始化 h = x (一次多项式)
+    Polynomial h;
+    h.setCoefficient(1, FiniteField::fromParts(0, 1));
     
-    Polynomial u = x;
-    FiniteField p = FiniteField::fromParts(0, 0x8000000000000000ULL);  // 模数p
+    // 保存原始的 x 多项式，用于后续比较
+    Polynomial x = h;
     
-    // 计算 x^p mod f
-    for (int i = 0; i < 127; i++) {  // p的比特数
-        u = (u * u) % (*this);
-        if ((p.getLow() >> i) & 1) {
-            u = (u * x) % (*this);
+    // Ben-Or算法主循环：检查 i = 1 到 ⌊n/2⌋
+    for (int i = 1; i <= n/2; i++) {
+        
+        // 使用modPow方法来计算h^p mod f
+        h = h.modPow(FiniteField::getFiniteFieldModule(), *this);
+        h.modInField();
+        
+        // 计算 h - x
+        Polynomial diff = h - x;
+        diff.modInField();
+        
+        // 如果 h - x = 0，说明 h^p = x，��意味着多项式可约
+        if (diff.isZero()) {
+            return false;
+        }
+        
+        Polynomial g = diff.gcd(*this);
+        g.modInField();
+        
+        // 如果gcd非平凡（不为1），则多项式可约
+        if (!g.isOne()) {
+            return false;
         }
     }
     
-    // 检查 gcd(x^p - x, f)
-    Polynomial diff = u - x;
-    return gcd(diff).degree() == 0;
+    return true;
+}
+
+// 添加快速幂取模运算的辅助方法
+__device__ __host__ Polynomial Polynomial::modPow(const FiniteField& exponent, const Polynomial& modulus) const {
+    Polynomial result;
+    result.setCoefficient(0, FiniteField::fromParts(0, 1));  // 设置为1
+    
+    if (modulus.isZero()) {
+        return result;
+    }
+    
+    Polynomial base = *this % modulus;
+    uint256_t exp(exponent.getHigh(), exponent.getLow());
+    
+    while (!(exp.high == 0 && exp.low == 0)) {
+        if (exp.low & 1) {
+            result = (result * base) % modulus;
+        }
+        base = (base * base) % modulus;
+        // 右移1位
+        exp.low = (exp.low >> 1) | (exp.high << 127);
+        exp.high >>= 1;
+    }
+    
+    return result;
 }
 
 __host__ std::string Polynomial::toString() const {
@@ -280,5 +324,10 @@ __host__ std::string Polynomial::toString() const {
     }
 
     return oss.str();
+}
+
+__device__ __host__ bool Polynomial::isOne() const {
+    if (deg != 0) return false;
+    return coefficients[0].isOne();
 }
 
