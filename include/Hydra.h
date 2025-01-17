@@ -1,18 +1,28 @@
 #ifndef HYDRA_H
 #define HYDRA_H
-
+#include <cstring>
+#include <cmath>
+#include <crypto++/cryptlib.h>
+#include <crypto++/shake.h>
+#include <crypto++/hex.h>
+#include <crypto++/pch.h>
+#include <crypto++/secblock.h>
+#include <crypto++/config.h>
+#include <crypto++/keccak.h>
+// #include <cryptopp/shake.h>
+// #include <cryptopp/hex.h>
+// #include <cryptopp/pch.h>
+// #include <cryptopp/secblock.h>
+// #include <cryptopp/config.h>
+// #include <cryptopp/keccak.h>
 #include "finite_field.h"
 #include "matrix.h"
 #include "polynomial.h"
-#include <cryptopp/shake.h>
-#include <cstring>
-#include <cmath>
-using KeccakByte = unsigned char;
-
-// 前向声明
 extern "C" {
     #include "KeccakHash.h"
 }
+// KeccakByte定义移动到设备和主机都可访问的区域
+using KeccakByte = unsigned char;
 
 // 用于get_rounds返回的结构体
 struct Rounds {
@@ -71,7 +81,7 @@ private:
     int perms;
     int d;
     int Re_1, Re_2, Ri, Rh;
-    
+    bool device_pointers;  // 是否为设备端对象指针
     // 矩阵
     Matrix Me, Mi, Mh;
     
@@ -125,26 +135,26 @@ private:
         return len;
     }
 
-    bool device_pointers;  // 新增成员
-
 public:
     // 构造函数和析构函数
     __host__ Hydra(FiniteField p, int t, int kappa);
-    __host__ ~Hydra() {
-        if (!device_pointers) {  // 只有当不是设备指针时才删除
-            if (rc_b) delete[] rc_b;
-            if (rc_h) delete[] rc_h;
-        }
-    }
-    
+    __host__ Hydra() : p(FiniteField::fromParts(0, 0)), F(FiniteField::fromParts(0, 0)),
+                   kappa(0), perms(0), d(0), Re_1(0), Re_2(0), Ri(0), Rh(0),
+                   device_pointers(false), Me(4, 4), Mi(4, 4), Mh(4, 4),
+                   rc_b(nullptr), rc_h(nullptr), rc_r(nullptr) {}
+
     // 密钥生成和加密解密函数
     __host__ __device__ FiniteFieldArray gen_ks(int t, const FiniteFieldArray& K, const FiniteFieldArray& IV, const FiniteFieldArray& N);
-    __host__ __device__ FiniteFieldArray encrypt(
+     __device__ __forceinline__ FiniteFieldArray encrypt(
         const FiniteFieldArray& plains,
         const FiniteFieldArray& K,
         const FiniteFieldArray& IV,
         const FiniteFieldArray& N
-    );
+    ) {
+        FiniteFieldArray keystream = gen_ks(plains.getSize(), K, IV, N);
+        FiniteFieldArray ciphers = plains + keystream;
+        return ciphers;
+    }
     
     __device__ FiniteFieldArray decrypt(
         const FiniteFieldArray& ciphers,
@@ -160,12 +170,16 @@ public:
     __host__ __device__ Matrix& getME() { return Me; }
     __host__ __device__ Matrix& getMI() { return Mi; }
     __host__ __device__ Matrix& getMH() { return Mh; }
-    __host__ __device__ FiniteFieldArray* getRCB() { return rc_b; }
-    __host__ __device__ FiniteFieldArray* getRCH() { return rc_h; }
+    __host__ __device__ FiniteFieldArray* getRCB() const { return rc_b; }
+    __host__ __device__ FiniteFieldArray* getRCH() const { return rc_h; }
+    __host__ __device__ FiniteFieldArray* getRCR() const { return rc_r; }
+
     __host__ __device__ int getRE1() const { return Re_1; }
     __host__ __device__ int getRE2() const { return Re_2; }
     __host__ __device__ int getRI() const { return Ri; }
     __host__ __device__ int getRH() const { return Rh; }
+    __host__ __device__ int getNumPerms(int t) const { return num_perms(t); }
+
     
     // 设置器方法
     __host__ __device__ void setME(const Matrix& m) { Me = m; }
@@ -173,7 +187,45 @@ public:
     __host__ __device__ void setMH(const Matrix& m) { Mh = m; }
     __host__ __device__ void setRCB(FiniteFieldArray* rc) { rc_b = rc; }
     __host__ __device__ void setRCH(FiniteFieldArray* rc) { rc_h = rc; }
-    __host__ __device__ void setDevicePointers(bool is_device) { device_pointers = is_device; }
+    __host__ __device__ void setRCR(FiniteFieldArray* rc) { rc_r = rc; }
+    __host__ Hydra* copyToDevice();
+    __host__ void freeDeviceCopy(Hydra* d_hydra);
+    // 析构函数
+    // 析构函数
+    __host__ ~Hydra() {
+        if (!device_pointers) { // 主机端释放资源
+            if (rc_b) delete[] rc_b;
+            if (rc_h) delete[] rc_h;
+            if (rc_r) delete[] rc_r;
+        }
+    }
 };
-__global__ void hydraEncrypt(FiniteFieldArray* output, Hydra* hydra, int t);
+
+
+// 在类外直接实现applyHydra函数
+__device__ __forceinline__ void applyHydra(Hydra* hydra, FiniteField* ct1, FiniteField* ct2, FiniteField* ct3, FiniteField* ct4) {
+    // 初始化明文数据
+    FiniteFieldArray plains(4);
+    plains[0] = FiniteField::fromParts(0, 0); 
+    plains[1] = FiniteField::fromParts(0, 1);
+    plains[2] = FiniteField::fromParts(0, 2);
+    plains[3] = FiniteField::fromParts(0, 3);
+
+    // 初始化密钥参数
+    FiniteFieldArray K(4), IV(3), N(1);
+    for (int i = 0; i < 4; ++i) K[i] = FiniteField::fromParts(0, 0);
+    for (int i = 0; i < 3; ++i) IV[i] = FiniteField::fromParts(0, 1);
+    N[0] = FiniteField::fromParts(0, 2);
+
+    // 加密
+    FiniteFieldArray encrypted = hydra->encrypt(plains, K, IV, N);
+
+    // 写入输出
+    *ct1 = encrypted[0];
+    *ct2 = encrypted[1];
+    *ct3 = encrypted[2];
+    *ct4 = encrypted[3];
+}
+
+__global__ void hydraEncrypt(FiniteFieldArray* d_state_out, Hydra* d_hydra, int t);
 #endif // HYDRA_H

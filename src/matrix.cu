@@ -171,6 +171,7 @@ __device__ __host__ Matrix Matrix::operator*(const Matrix& other) const {
 
 __device__ __host__ FiniteFieldArray Matrix::operator*(const FiniteFieldArray& vec) const {
     // 假设矩阵大小为 n x n，向量大小为 n
+    assert(cols == vec.getSize());
     size_t n = vec.getSize();
     FiniteFieldArray result(n);
     

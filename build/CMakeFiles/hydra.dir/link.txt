@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libhydra.a CMakeFiles/hydra.dir/src/Hydra.cu.o CMakeFiles/hydra.dir/src/finite_field.cu.o CMakeFiles/hydra.dir/src/matrix.cu.o CMakeFiles/hydra.dir/src/polynomial.cu.o
+/usr/bin/ranlib ../lib/libhydra.a

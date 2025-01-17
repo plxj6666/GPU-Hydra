@@ -1,12 +1,11 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include "finite_field.h"
-#include "polynomial.h"
 #include <cassert>
 #include <cusolverDn.h>
 #include <cublas_v2.h>
-
+#include "finite_field.h"
+#include "polynomial.h"
 #define MAX_MATRIX_SIZE 8  // 最大矩阵大小
 
 class Matrix {

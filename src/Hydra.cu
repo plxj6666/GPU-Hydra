@@ -5,15 +5,6 @@
 */
 
 #include "Hydra.h"
-#include "cryptopp/shake.h"
-#include "cryptopp/hex.h"
-#include "cryptopp/pch.h"
-#include "cryptopp/secblock.h"
-#include <cryptopp/config.h>
-#include <cryptopp/keccak.h>
-extern "C" {
-    #include "KeccakHash.h"
-}
 
 
 void print_outputshake(Keccak_HashInstance shake) {
@@ -355,7 +346,7 @@ __host__ Matrix Hydra::gen_mi(Keccak_HashInstance &shake) {
     return DotPair(dot1, dot2);
 }
 
-// 非线性变换函数
+// ��线性变换函数
 __host__ __device__ FiniteFieldArray Hydra::non_linear_e(const FiniteFieldArray& state) {
     FiniteFieldArray result(state.getSize());
     for (int i = 0; i < state.getSize(); ++i) {
@@ -410,6 +401,7 @@ __device__ FiniteFieldArray Hydra::R(const FiniteFieldArray& state, int i) {
     // assert(state.getSize() == 8);
     // assert(rc_r.size() >= i);
     if (i == 0) {
+        // 从这里返回
         return state;
     }
     FiniteFieldArray y = slice(state, 0, 4);
@@ -458,9 +450,7 @@ __host__ __device__ StateSumPair Hydra::permutation_b(FiniteFieldArray state) {
     for (int i = 0; i < 4; ++i) {
         sum_[i] = FiniteField::fromParts(0, 0);  // 初始化为0
     }
-    printf("Re_1: %d\n", getRE1());
-    printf("Me.row: %d\n", Me.getRows());
-    printf("Me.col: %d\n", Me.getCols());
+
     state = Me * state;
     for (int i = 0; i < Re_1; ++i) {
         state = non_linear_e(state);
@@ -492,16 +482,16 @@ __host__ __device__ FiniteFieldArray Hydra::permutation_h(FiniteFieldArray state
 }
 
 __host__ __device__ FiniteFieldArray Hydra::gen_ks(int t, const FiniteFieldArray& K, const FiniteFieldArray& IV, const FiniteFieldArray& N) {
-    // assert(IV.getSize() == 3);
-    // assert(K.getSize() == 4);
+    assert(IV.getSize() == 3);
+    assert(K.getSize() == 4);
     
     FiniteFieldArray state = concat(N, IV);
-    // assert(state.getSize() == 4);
+    assert(state.getSize() == 4);
     
     FiniteFieldArray K_vec = K;
     state = state + K_vec;
     
-    StateSumPair result = permutation_b(state); // 步入这一行会拷贝？
+    StateSumPair result = permutation_b(state); 
     state = result.state;
     FiniteFieldArray z = result.sum;
     
@@ -529,16 +519,16 @@ __host__ __device__ FiniteFieldArray Hydra::gen_ks(int t, const FiniteFieldArray
 }
 
 // 加密解密函数
-__host__ __device__ FiniteFieldArray Hydra::encrypt(
-    const FiniteFieldArray& plains,
-    const FiniteFieldArray& K,
-    const FiniteFieldArray& IV,
-    const FiniteFieldArray& N
-) {
-    FiniteFieldArray keystream = gen_ks(plains.getSize(), K, IV, N);
-    FiniteFieldArray ciphers = plains + keystream;
-    return ciphers;
-}
+// __device__ FiniteFieldArray Hydra::encrypt(
+//     const FiniteFieldArray& plains,
+//     const FiniteFieldArray& K,
+//     const FiniteFieldArray& IV,
+//     const FiniteFieldArray& N
+// ) {
+//     FiniteFieldArray keystream = gen_ks(plains.getSize(), K, IV, N);
+//     FiniteFieldArray ciphers = plains + keystream;
+//     return ciphers;
+// }
 
 __device__ FiniteFieldArray Hydra::decrypt(
     const FiniteFieldArray& ciphers,
@@ -568,39 +558,189 @@ __host__ __device__ double Hydra::max_three_double(double a, double b, double c)
     return max_double(max_double(a, b), c);
 }
 
-// 在 Hydra.cu 中实现接口函数
-__global__ void hydraEncrypt(FiniteFieldArray* output, Hydra* hydra, int t) {
-    // 初始化输入状态
-    FiniteFieldArray state_in(t);
-    for (int i = 0; i < t; ++i) {
-        state_in[i] = FiniteField::fromParts(0, i);  // 设置初始值
+__host__ Hydra* Hydra::copyToDevice() {
+    // 1. 为 Hydra 对象分配设备端内存
+    Hydra* d_hydra;
+    cudaMalloc(&d_hydra, sizeof(Hydra));
+
+    // 2. 将 Hydra 的基本结构复制到设备端
+    cudaMemcpy(d_hydra, this, sizeof(Hydra), cudaMemcpyHostToDevice);
+
+    // 3. 复制 rc_b 数组到设备端
+    if (rc_b) {
+        int rc_b_size = Re_1 + Re_2 + Ri; // 计算总大小
+        FiniteFieldArray* d_rc_b;
+        cudaMalloc(&d_rc_b, sizeof(FiniteFieldArray) * rc_b_size);
+
+        for (int i = 0; i < rc_b_size; ++i) {
+            FiniteFieldArray temp_array = rc_b[i];
+
+            // 为设备端的 elements 指针分配内存
+            FiniteField* d_elements;
+            cudaMalloc(&d_elements, sizeof(FiniteField) * temp_array.getSize());
+            
+            // 复制 elements 的内容到设备端
+            cudaMemcpy(d_elements, temp_array.getElements(), sizeof(FiniteField) * temp_array.getSize(), cudaMemcpyHostToDevice);
+
+            // 在主机端更新 temp_array 的 elements 指针为设备地址
+            temp_array.setElements(d_elements);
+
+            // 将更新后的 temp_array 复制到设备端
+            cudaMemcpy(&d_rc_b[i], &temp_array, sizeof(FiniteFieldArray), cudaMemcpyHostToDevice);
+        }
+
+        // 将 d_rc_b 的指针赋值给设备端 Hydra 对象
+        cudaMemcpy(&(d_hydra->rc_b), &d_rc_b, sizeof(FiniteFieldArray*), cudaMemcpyHostToDevice);
     }
-    
-    // 初始化密钥 MK (4个元素)
-    FiniteFieldArray MK(4);
-    for (int i = 0; i < 4; ++i) {
-        MK[i] = FiniteField::fromParts(0, 0);
+
+
+    // 4. 复制 rc_h 数组到设备端
+    if (rc_h) {
+        int rc_h_size = Rh; // 计算总大小
+        FiniteFieldArray* d_rc_h;
+        cudaMalloc(&d_rc_h, sizeof(FiniteFieldArray) * rc_h_size);
+
+        for (int i = 0; i < rc_h_size; ++i) {
+            FiniteFieldArray temp_array = rc_h[i];
+
+            // 为设备端的 elements 指针分配内存
+            FiniteField* d_elements;
+            cudaMalloc(&d_elements, sizeof(FiniteField) * temp_array.getSize());
+            
+            // 复制 elements 的内容到设备端
+            cudaMemcpy(d_elements, temp_array.getElements(), sizeof(FiniteField) * temp_array.getSize(), cudaMemcpyHostToDevice);
+
+            // 在主机端更新 temp_array 的 elements 指针为设备地址
+            temp_array.setElements(d_elements);
+
+            // 将更新后的 temp_array 复制到设备端
+            cudaMemcpy(&d_rc_h[i], &temp_array, sizeof(FiniteFieldArray), cudaMemcpyHostToDevice);
+        }
+
+        // 将 d_rc_b 的指针赋值给设备端 Hydra 对象
+        cudaMemcpy(&(d_hydra->rc_h), &d_rc_h, sizeof(FiniteFieldArray*), cudaMemcpyHostToDevice);
     }
-    
-    // 初始化 IV (3个元素)
-    FiniteFieldArray IV(3);
-    for (int i = 0; i < 3; ++i) {
-        IV[i] = FiniteField::fromParts(0, 1);
+
+    // 5. 复制 rc_r 数组到设备端
+    if (rc_r) {
+        int rc_r_size = perms; // 计算总大小
+        FiniteFieldArray* d_rc_r;
+        cudaMalloc(&d_rc_r, sizeof(FiniteFieldArray) * rc_r_size);
+
+        for (int i = 0; i < rc_r_size; ++i) {
+            FiniteFieldArray temp_array = rc_r[i];
+
+            // 为设备端的 elements 指针分配内存
+            FiniteField* d_elements;
+            cudaMalloc(&d_elements, sizeof(FiniteField) * temp_array.getSize());
+            
+            // 复制 elements 的内容到设备端
+            cudaMemcpy(d_elements, temp_array.getElements(), sizeof(FiniteField) * temp_array.getSize(), cudaMemcpyHostToDevice);
+
+            // 在主机端更新 temp_array 的 elements 指针为设备地址
+            temp_array.setElements(d_elements);
+
+            // 将更新后的 temp_array 复制到设备端
+            cudaMemcpy(&d_rc_r[i], &temp_array, sizeof(FiniteFieldArray), cudaMemcpyHostToDevice);
+        }
+
+        // 将 d_rc_b 的指针赋值给设备端 Hydra 对象
+        cudaMemcpy(&(d_hydra->rc_r), &d_rc_r, sizeof(FiniteFieldArray*), cudaMemcpyHostToDevice);
     }
-    
-    // 初始化 N (1个元素)
-    FiniteFieldArray N(1);
-    N[0] = FiniteField::fromParts(0, 2);
-    
-    // 确保输出数组正确初始化
-    for (int i = 0; i < t; ++i) {
-        (*output)[i] = FiniteField::fromParts(0, i);
-    }
-    
-    // 现在使用正确初始化的state_in进行加密
-    *output = hydra->encrypt(state_in, MK, IV, N);
-    for (int i = 0; i < output->getSize(); ++i) {
-        (*output)[i].print();
-        printf("\n");
-    }
+
+    return d_hydra;
 }
+
+
+__host__ void Hydra::freeDeviceCopy(Hydra* d_hydra) {
+    Hydra h_temp;
+    // 从设备端复制数据到主机端，获取设备端指针
+    cudaMemcpy(&h_temp, d_hydra, sizeof(Hydra), cudaMemcpyDeviceToHost);
+
+    // 释放设备端 rc_b
+    if (h_temp.rc_b) {
+        int rc_b_size = h_temp.Re_1 + h_temp.Re_2 + h_temp.Ri;
+        for (int i = 0; i < rc_b_size; ++i) {
+            cudaFree(&h_temp.rc_b[i]);
+        }
+        cudaFree(h_temp.rc_b);
+    }
+
+    // 释放设备端 rc_h
+    if (h_temp.rc_h) {
+        int rc_h_size = h_temp.Rh;
+        for (int i = 0; i < rc_h_size; ++i) {
+            cudaFree(&h_temp.rc_h[i]);
+        }
+        cudaFree(h_temp.rc_h);
+    }
+
+    // 释放设备端 rc_r
+    if (h_temp.rc_r) {
+        int rc_r_size = h_temp.perms;
+        for (int i = 0; i < rc_r_size; ++i) {
+            cudaFree(&h_temp.rc_r[i]);
+        }
+        cudaFree(h_temp.rc_r);
+    }
+
+    // 释放设备端 Hydra 对象本身
+    cudaFree(d_hydra);
+}
+
+// __device__ void applyHydra(Hydra* hydra, FiniteField* ct1, FiniteField* ct2, FiniteField* ct3, FiniteField* ct4) {
+//     // 初始化明文数据
+//     FiniteFieldArray plains(4);
+//     plains[0] = FiniteField::fromParts(0, 0); // 明文块 0
+//     plains[1] = FiniteField::fromParts(0, 1); // 明文块 1
+//     plains[2] = FiniteField::fromParts(0, 2); // 明文块 2
+//     plains[3] = FiniteField::fromParts(0, 3); // 明文块 3
+
+//     // 初始化 K, IV, N
+//     FiniteFieldArray K(4), IV(3), N(1);
+//     for (int i = 0; i < 4; ++i) {
+//         K[i] = FiniteField::fromParts(0, 0);  // 密钥初始化为0
+//     }
+//     for (int i = 0; i < 3; ++i) {
+//         IV[i] = FiniteField::fromParts(0, 1); // 初始化向量为1
+//     }
+//     N[0] = FiniteField::fromParts(0, 2);      // 随机数为2
+
+//     // 调用 Hydra 加密
+//     FiniteFieldArray encrypted = hydra->encrypt(plains, K, IV, N);
+
+//     // 将加密结果写入输出参数
+//     *ct1 = encrypted[0];
+//     *ct2 = encrypted[1];
+//     *ct3 = encrypted[2];
+//     *ct4 = encrypted[3];
+//     printf("encrypted[0]: ");
+//     encrypted[0].print();
+//     printf("\n");
+//     printf("encrypted[1]: ");
+//     encrypted[1].print();
+//     printf("\n");
+//     printf("encrypted[2]: ");
+//     encrypted[2].print();
+//     printf("\n");
+//     printf("encrypted[3]: ");
+//     encrypted[3].print();
+//     printf("\n");
+// }
+
+// __global__ void hydraEncrypt(FiniteFieldArray* d_state_out, Hydra* d_hydra, int t) {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+//     if (idx < t / 4) {
+//         FiniteField ct1, ct2, ct3, ct4;
+//         applyHydra(d_hydra, &ct1, &ct2, &ct3, &ct4);
+
+//         // 现在可以正常使用 setElement 方法
+//         d_state_out->setElement(idx * 4, ct1);
+//         d_state_out->setElement(idx * 4 + 1, ct2);
+//         d_state_out->setElement(idx * 4 + 2, ct3);
+//         d_state_out->setElement(idx * 4 + 3, ct4);
+//     }
+// }
+
+

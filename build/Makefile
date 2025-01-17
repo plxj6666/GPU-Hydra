@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /root/project/cuda_c++/GPU-Hydra
+CMAKE_SOURCE_DIR = /root/project/GPU-MPC-TEST/fss/GPU-Hydra
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /root/project/cuda_c++/GPU-Hydra/build
+CMAKE_BINARY_DIR = /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles /root/project/cuda_c++/GPU-Hydra/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build/CMakeFiles /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -117,89 +117,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named gpu_hydra
+# Target rules for targets named hydra
 
 # Build rule for target.
-gpu_hydra: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gpu_hydra
-.PHONY : gpu_hydra
+hydra: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 hydra
+.PHONY : hydra
 
 # fast build rule for target.
-gpu_hydra/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/build
-.PHONY : gpu_hydra/fast
-
-#=============================================================================
-# Target rules for targets named test_matrix_basic
-
-# Build rule for target.
-test_matrix_basic: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_matrix_basic
-.PHONY : test_matrix_basic
-
-# fast build rule for target.
-test_matrix_basic/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/build
-.PHONY : test_matrix_basic/fast
-
-#=============================================================================
-# Target rules for targets named test_finite_field
-
-# Build rule for target.
-test_finite_field: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_finite_field
-.PHONY : test_finite_field
-
-# fast build rule for target.
-test_finite_field/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/build
-.PHONY : test_finite_field/fast
-
-#=============================================================================
-# Target rules for targets named test_unit128
-
-# Build rule for target.
-test_unit128: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_unit128
-.PHONY : test_unit128
-
-# fast build rule for target.
-test_unit128/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/build
-.PHONY : test_unit128/fast
-
-#=============================================================================
-# Target rules for targets named test_matrix_isinvertible
-
-# Build rule for target.
-test_matrix_isinvertible: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_matrix_isinvertible
-.PHONY : test_matrix_isinvertible
-
-# fast build rule for target.
-test_matrix_isinvertible/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/build
-.PHONY : test_matrix_isinvertible/fast
-
-#=============================================================================
-# Target rules for targets named test_polynomial
-
-# Build rule for target.
-test_polynomial: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_polynomial
-.PHONY : test_polynomial
-
-# fast build rule for target.
-test_polynomial/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/build
-.PHONY : test_polynomial/fast
+hydra/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/build
+.PHONY : hydra/fast
 
 src/Hydra.o: src/Hydra.cu.o
 .PHONY : src/Hydra.o
 
 # target to build an object file
 src/Hydra.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/Hydra.cu.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/Hydra.cu.o
 .PHONY : src/Hydra.cu.o
 
 src/Hydra.i: src/Hydra.cu.i
@@ -207,7 +142,7 @@ src/Hydra.i: src/Hydra.cu.i
 
 # target to preprocess a source file
 src/Hydra.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/Hydra.cu.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/Hydra.cu.i
 .PHONY : src/Hydra.cu.i
 
 src/Hydra.s: src/Hydra.cu.s
@@ -215,7 +150,7 @@ src/Hydra.s: src/Hydra.cu.s
 
 # target to generate assembly for a file
 src/Hydra.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/Hydra.cu.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/Hydra.cu.s
 .PHONY : src/Hydra.cu.s
 
 src/finite_field.o: src/finite_field.cu.o
@@ -223,7 +158,7 @@ src/finite_field.o: src/finite_field.cu.o
 
 # target to build an object file
 src/finite_field.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/finite_field.cu.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/finite_field.cu.o
 .PHONY : src/finite_field.cu.o
 
 src/finite_field.i: src/finite_field.cu.i
@@ -231,7 +166,7 @@ src/finite_field.i: src/finite_field.cu.i
 
 # target to preprocess a source file
 src/finite_field.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/finite_field.cu.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/finite_field.cu.i
 .PHONY : src/finite_field.cu.i
 
 src/finite_field.s: src/finite_field.cu.s
@@ -239,7 +174,7 @@ src/finite_field.s: src/finite_field.cu.s
 
 # target to generate assembly for a file
 src/finite_field.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/finite_field.cu.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/finite_field.cu.s
 .PHONY : src/finite_field.cu.s
 
 src/matrix.o: src/matrix.cu.o
@@ -247,7 +182,7 @@ src/matrix.o: src/matrix.cu.o
 
 # target to build an object file
 src/matrix.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/matrix.cu.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/matrix.cu.o
 .PHONY : src/matrix.cu.o
 
 src/matrix.i: src/matrix.cu.i
@@ -255,7 +190,7 @@ src/matrix.i: src/matrix.cu.i
 
 # target to preprocess a source file
 src/matrix.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/matrix.cu.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/matrix.cu.i
 .PHONY : src/matrix.cu.i
 
 src/matrix.s: src/matrix.cu.s
@@ -263,7 +198,7 @@ src/matrix.s: src/matrix.cu.s
 
 # target to generate assembly for a file
 src/matrix.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/matrix.cu.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/matrix.cu.s
 .PHONY : src/matrix.cu.s
 
 src/polynomial.o: src/polynomial.cu.o
@@ -271,7 +206,7 @@ src/polynomial.o: src/polynomial.cu.o
 
 # target to build an object file
 src/polynomial.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/polynomial.cu.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/polynomial.cu.o
 .PHONY : src/polynomial.cu.o
 
 src/polynomial.i: src/polynomial.cu.i
@@ -279,7 +214,7 @@ src/polynomial.i: src/polynomial.cu.i
 
 # target to preprocess a source file
 src/polynomial.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/polynomial.cu.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/polynomial.cu.i
 .PHONY : src/polynomial.cu.i
 
 src/polynomial.s: src/polynomial.cu.s
@@ -287,128 +222,8 @@ src/polynomial.s: src/polynomial.cu.s
 
 # target to generate assembly for a file
 src/polynomial.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/src/polynomial.cu.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/polynomial.cu.s
 .PHONY : src/polynomial.cu.s
-
-test/test_finite_field.o: test/test_finite_field.cu.o
-.PHONY : test/test_finite_field.o
-
-# target to build an object file
-test/test_finite_field.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/test/test_finite_field.cu.o
-.PHONY : test/test_finite_field.cu.o
-
-test/test_finite_field.i: test/test_finite_field.cu.i
-.PHONY : test/test_finite_field.i
-
-# target to preprocess a source file
-test/test_finite_field.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/test/test_finite_field.cu.i
-.PHONY : test/test_finite_field.cu.i
-
-test/test_finite_field.s: test/test_finite_field.cu.s
-.PHONY : test/test_finite_field.s
-
-# target to generate assembly for a file
-test/test_finite_field.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/test/test_finite_field.cu.s
-.PHONY : test/test_finite_field.cu.s
-
-test/test_matrix_basic.o: test/test_matrix_basic.cu.o
-.PHONY : test/test_matrix_basic.o
-
-# target to build an object file
-test/test_matrix_basic.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/test/test_matrix_basic.cu.o
-.PHONY : test/test_matrix_basic.cu.o
-
-test/test_matrix_basic.i: test/test_matrix_basic.cu.i
-.PHONY : test/test_matrix_basic.i
-
-# target to preprocess a source file
-test/test_matrix_basic.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/test/test_matrix_basic.cu.i
-.PHONY : test/test_matrix_basic.cu.i
-
-test/test_matrix_basic.s: test/test_matrix_basic.cu.s
-.PHONY : test/test_matrix_basic.s
-
-# target to generate assembly for a file
-test/test_matrix_basic.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/test/test_matrix_basic.cu.s
-.PHONY : test/test_matrix_basic.cu.s
-
-test/test_matrix_isinvertible.o: test/test_matrix_isinvertible.cu.o
-.PHONY : test/test_matrix_isinvertible.o
-
-# target to build an object file
-test/test_matrix_isinvertible.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/test/test_matrix_isinvertible.cu.o
-.PHONY : test/test_matrix_isinvertible.cu.o
-
-test/test_matrix_isinvertible.i: test/test_matrix_isinvertible.cu.i
-.PHONY : test/test_matrix_isinvertible.i
-
-# target to preprocess a source file
-test/test_matrix_isinvertible.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/test/test_matrix_isinvertible.cu.i
-.PHONY : test/test_matrix_isinvertible.cu.i
-
-test/test_matrix_isinvertible.s: test/test_matrix_isinvertible.cu.s
-.PHONY : test/test_matrix_isinvertible.s
-
-# target to generate assembly for a file
-test/test_matrix_isinvertible.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/test/test_matrix_isinvertible.cu.s
-.PHONY : test/test_matrix_isinvertible.cu.s
-
-test/test_polynomial.o: test/test_polynomial.cu.o
-.PHONY : test/test_polynomial.o
-
-# target to build an object file
-test/test_polynomial.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/test/test_polynomial.cu.o
-.PHONY : test/test_polynomial.cu.o
-
-test/test_polynomial.i: test/test_polynomial.cu.i
-.PHONY : test/test_polynomial.i
-
-# target to preprocess a source file
-test/test_polynomial.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/test/test_polynomial.cu.i
-.PHONY : test/test_polynomial.cu.i
-
-test/test_polynomial.s: test/test_polynomial.cu.s
-.PHONY : test/test_polynomial.s
-
-# target to generate assembly for a file
-test/test_polynomial.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/test/test_polynomial.cu.s
-.PHONY : test/test_polynomial.cu.s
-
-test/test_unit128.o: test/test_unit128.cu.o
-.PHONY : test/test_unit128.o
-
-# target to build an object file
-test/test_unit128.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/test/test_unit128.cu.o
-.PHONY : test/test_unit128.cu.o
-
-test/test_unit128.i: test/test_unit128.cu.i
-.PHONY : test/test_unit128.i
-
-# target to preprocess a source file
-test/test_unit128.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/test/test_unit128.cu.i
-.PHONY : test/test_unit128.cu.i
-
-test/test_unit128.s: test/test_unit128.cu.s
-.PHONY : test/test_unit128.s
-
-# target to generate assembly for a file
-test/test_unit128.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/test/test_unit128.cu.s
-.PHONY : test/test_unit128.cu.s
 
 # Help Target
 help:
@@ -418,12 +233,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... gpu_hydra"
-	@echo "... test_finite_field"
-	@echo "... test_matrix_basic"
-	@echo "... test_matrix_isinvertible"
-	@echo "... test_polynomial"
-	@echo "... test_unit128"
+	@echo "... hydra"
 	@echo "... src/Hydra.o"
 	@echo "... src/Hydra.i"
 	@echo "... src/Hydra.s"
@@ -436,21 +246,6 @@ help:
 	@echo "... src/polynomial.o"
 	@echo "... src/polynomial.i"
 	@echo "... src/polynomial.s"
-	@echo "... test/test_finite_field.o"
-	@echo "... test/test_finite_field.i"
-	@echo "... test/test_finite_field.s"
-	@echo "... test/test_matrix_basic.o"
-	@echo "... test/test_matrix_basic.i"
-	@echo "... test/test_matrix_basic.s"
-	@echo "... test/test_matrix_isinvertible.o"
-	@echo "... test/test_matrix_isinvertible.i"
-	@echo "... test/test_matrix_isinvertible.s"
-	@echo "... test/test_polynomial.o"
-	@echo "... test/test_polynomial.i"
-	@echo "... test/test_polynomial.s"
-	@echo "... test/test_unit128.o"
-	@echo "... test/test_unit128.i"
-	@echo "... test/test_unit128.s"
 .PHONY : help
 
 

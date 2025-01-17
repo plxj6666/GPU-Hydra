@@ -166,13 +166,6 @@ __device__ __host__ bool FiniteField::operator!=(const FiniteField& other) const
     return !(*this == other);
 }
 
-__device__ __host__ FiniteField& FiniteField::operator=(const FiniteField& other) {
-    if (this != &other) {
-        value = other.value;
-    }
-    return *this;
-}
-
 __device__ __host__ FiniteField FiniteField::operator-() const {
     if (value.high == 0 && value.low == 0) return *this;
     uint256_t p = getP();

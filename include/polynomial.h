@@ -1,9 +1,8 @@
 #ifndef POLYNOMIAL_H
 #define POLYNOMIAL_H
 
-#include "finite_field.h"
 #include <cassert>
-
+#include "finite_field.h"
 class Polynomial {
 private:
     static const int MAX_DEGREE = 64;  // 最大多项式度数

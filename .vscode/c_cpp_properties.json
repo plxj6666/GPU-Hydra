@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/include/XKCP/lib/high/Keccak",
+                "${workspaceFolder}/include/XKCP/lib/common",
+                "${workspaceFolder}/include/XKCP/lib/low/KeccakHash",
+                "${workspaceFolder}/include/XKCP/bin/generic64/libXKCP.so.headers",
+                "/usr/local/cuda/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/local/cuda/bin/nvcc",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

@@ -54,21 +54,16 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /root/project/cuda_c++/GPU-Hydra
+CMAKE_SOURCE_DIR = /root/project/GPU-MPC-TEST/fss/GPU-Hydra
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /root/project/cuda_c++/GPU-Hydra/build
+CMAKE_BINARY_DIR = /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build
 
 #=============================================================================
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/gpu_hydra.dir/all
-all: CMakeFiles/test_matrix_basic.dir/all
-all: CMakeFiles/test_finite_field.dir/all
-all: CMakeFiles/test_unit128.dir/all
-all: CMakeFiles/test_matrix_isinvertible.dir/all
-all: CMakeFiles/test_polynomial.dir/all
+all: CMakeFiles/hydra.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -76,169 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/gpu_hydra.dir/clean
-clean: CMakeFiles/test_matrix_basic.dir/clean
-clean: CMakeFiles/test_finite_field.dir/clean
-clean: CMakeFiles/test_unit128.dir/clean
-clean: CMakeFiles/test_matrix_isinvertible.dir/clean
-clean: CMakeFiles/test_polynomial.dir/clean
+clean: CMakeFiles/hydra.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/gpu_hydra.dir
+# Target rules for target CMakeFiles/hydra.dir
 
 # All Build rule for target.
-CMakeFiles/gpu_hydra.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/cuda_c++/GPU-Hydra/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target gpu_hydra"
-.PHONY : CMakeFiles/gpu_hydra.dir/all
+CMakeFiles/hydra.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/GPU-MPC-TEST/fss/GPU-Hydra/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target hydra"
+.PHONY : CMakeFiles/hydra.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/gpu_hydra.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 5
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/gpu_hydra.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
-.PHONY : CMakeFiles/gpu_hydra.dir/rule
+CMakeFiles/hydra.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build/CMakeFiles 5
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/hydra.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/GPU-MPC-TEST/fss/GPU-Hydra/build/CMakeFiles 0
+.PHONY : CMakeFiles/hydra.dir/rule
 
 # Convenience name for target.
-gpu_hydra: CMakeFiles/gpu_hydra.dir/rule
-.PHONY : gpu_hydra
+hydra: CMakeFiles/hydra.dir/rule
+.PHONY : hydra
 
 # clean rule for target.
-CMakeFiles/gpu_hydra.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/gpu_hydra.dir/build.make CMakeFiles/gpu_hydra.dir/clean
-.PHONY : CMakeFiles/gpu_hydra.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/test_matrix_basic.dir
-
-# All Build rule for target.
-CMakeFiles/test_matrix_basic.dir/all: CMakeFiles/gpu_hydra.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/cuda_c++/GPU-Hydra/build/CMakeFiles --progress-num=9,10,11 "Built target test_matrix_basic"
-.PHONY : CMakeFiles/test_matrix_basic.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/test_matrix_basic.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 8
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_matrix_basic.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
-.PHONY : CMakeFiles/test_matrix_basic.dir/rule
-
-# Convenience name for target.
-test_matrix_basic: CMakeFiles/test_matrix_basic.dir/rule
-.PHONY : test_matrix_basic
-
-# clean rule for target.
-CMakeFiles/test_matrix_basic.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_basic.dir/build.make CMakeFiles/test_matrix_basic.dir/clean
-.PHONY : CMakeFiles/test_matrix_basic.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/test_finite_field.dir
-
-# All Build rule for target.
-CMakeFiles/test_finite_field.dir/all: CMakeFiles/gpu_hydra.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/cuda_c++/GPU-Hydra/build/CMakeFiles --progress-num=6,7,8 "Built target test_finite_field"
-.PHONY : CMakeFiles/test_finite_field.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/test_finite_field.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 8
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_finite_field.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
-.PHONY : CMakeFiles/test_finite_field.dir/rule
-
-# Convenience name for target.
-test_finite_field: CMakeFiles/test_finite_field.dir/rule
-.PHONY : test_finite_field
-
-# clean rule for target.
-CMakeFiles/test_finite_field.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_finite_field.dir/build.make CMakeFiles/test_finite_field.dir/clean
-.PHONY : CMakeFiles/test_finite_field.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/test_unit128.dir
-
-# All Build rule for target.
-CMakeFiles/test_unit128.dir/all: CMakeFiles/gpu_hydra.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/cuda_c++/GPU-Hydra/build/CMakeFiles --progress-num=18,19,20 "Built target test_unit128"
-.PHONY : CMakeFiles/test_unit128.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/test_unit128.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 8
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_unit128.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
-.PHONY : CMakeFiles/test_unit128.dir/rule
-
-# Convenience name for target.
-test_unit128: CMakeFiles/test_unit128.dir/rule
-.PHONY : test_unit128
-
-# clean rule for target.
-CMakeFiles/test_unit128.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_unit128.dir/build.make CMakeFiles/test_unit128.dir/clean
-.PHONY : CMakeFiles/test_unit128.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/test_matrix_isinvertible.dir
-
-# All Build rule for target.
-CMakeFiles/test_matrix_isinvertible.dir/all: CMakeFiles/gpu_hydra.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/cuda_c++/GPU-Hydra/build/CMakeFiles --progress-num=12,13,14 "Built target test_matrix_isinvertible"
-.PHONY : CMakeFiles/test_matrix_isinvertible.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/test_matrix_isinvertible.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 8
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_matrix_isinvertible.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
-.PHONY : CMakeFiles/test_matrix_isinvertible.dir/rule
-
-# Convenience name for target.
-test_matrix_isinvertible: CMakeFiles/test_matrix_isinvertible.dir/rule
-.PHONY : test_matrix_isinvertible
-
-# clean rule for target.
-CMakeFiles/test_matrix_isinvertible.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_matrix_isinvertible.dir/build.make CMakeFiles/test_matrix_isinvertible.dir/clean
-.PHONY : CMakeFiles/test_matrix_isinvertible.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/test_polynomial.dir
-
-# All Build rule for target.
-CMakeFiles/test_polynomial.dir/all: CMakeFiles/gpu_hydra.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/project/cuda_c++/GPU-Hydra/build/CMakeFiles --progress-num=15,16,17 "Built target test_polynomial"
-.PHONY : CMakeFiles/test_polynomial.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/test_polynomial.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 8
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_polynomial.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/project/cuda_c++/GPU-Hydra/build/CMakeFiles 0
-.PHONY : CMakeFiles/test_polynomial.dir/rule
-
-# Convenience name for target.
-test_polynomial: CMakeFiles/test_polynomial.dir/rule
-.PHONY : test_polynomial
-
-# clean rule for target.
-CMakeFiles/test_polynomial.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_polynomial.dir/build.make CMakeFiles/test_polynomial.dir/clean
-.PHONY : CMakeFiles/test_polynomial.dir/clean
+CMakeFiles/hydra.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/clean
+.PHONY : CMakeFiles/hydra.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

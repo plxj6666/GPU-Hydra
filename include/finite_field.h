@@ -37,16 +37,26 @@ struct uint256_t {
 
 class FiniteField {
 private:
-    uint256_t value;  // 使用256位值
-    
     // 辅助函数声明
     static __device__ __host__ uint256_t getP();
     static __device__ __host__ uint256_t mod256(const uint256_t& x);
 
 public:
-    // 构造函数
-    __device__ __host__ FiniteField() : value() {}
-    
+    // 添加和修改构造函数
+    __device__ __host__ FiniteField() { value.high = 0; value.low = 0; }
+    __device__ __host__ FiniteField(const FiniteField& other) { value = other.value; }
+    __device__ __host__ FiniteField(const uint256_t& v) : value(v) {}
+
+    // 确保赋值运算符实现正确
+    __device__ __host__ FiniteField& operator=(const FiniteField& other) {
+        if (this != &other) {
+            value = other.value;
+        }
+        return *this;
+    }
+
+    // 确保value类型定义正确
+    uint256_t value;
     // 从128位高低位构造
     __host__ __device__ static FiniteField fromParts(uint128_t high, uint128_t low) {
         FiniteField result;
@@ -112,7 +122,6 @@ public:
     __device__ __host__ FiniteField operator-() const;
     __device__ __host__ FiniteField operator/(const FiniteField& other) const;
     __device__ __host__ bool operator==(const FiniteField& other) const;
-    __device__ __host__ FiniteField& operator=(const FiniteField& other);
     __device__ __host__ bool operator<(const FiniteField& other) const;
     __device__ __host__ bool operator!=(const FiniteField& other) const;
     __device__ __host__ FiniteField operator<<(int shift) const;
@@ -145,23 +154,29 @@ public:
     __host__ __device__ FiniteFieldArray() : elements(nullptr), size(0), owns_memory(false) {}
     
     __host__ __device__ FiniteFieldArray(size_t n) : size(n), owns_memory(true) {
-        #ifdef __CUDA_ARCH__
-        elements = new FiniteField[n];
-        #else
-        elements = new FiniteField[n];
-        #endif
+        if (n > 0) {
+            #ifdef __CUDA_ARCH__
+            cudaMalloc(&elements, sizeof(FiniteField) * n);
+            #else
+            elements = new FiniteField[n];
+            #endif
+        } else {
+            elements = nullptr;
+        }
     }
+
 
     // 析构函数
     __host__ __device__ ~FiniteFieldArray() {
         if (owns_memory && elements != nullptr) {
             #ifdef __CUDA_ARCH__
-            delete[] elements;
+            cudaFree(elements);
             #else
             delete[] elements;
             #endif
         }
     }
+
 
     // 只保留一个版本的 setElements
     __host__ __device__ void setElements(FiniteField* new_elements, bool take_ownership = false) {
@@ -263,6 +278,16 @@ public:
     // 获取数组大小
     __host__ __device__ size_t getSize() const {
         return size;
+    }
+
+    // 添加 setElement 方法
+    __host__ __device__ void setElement(size_t index, const FiniteField& value) {
+        #ifndef __CUDA_ARCH__
+        if (index >= size) {
+            throw std::out_of_range("Index out of range");
+        }
+        #endif
+        elements[index] = value;
     }
 };
 
