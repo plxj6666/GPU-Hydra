@@ -31,7 +31,7 @@ struct Rounds {
     int Ri;
     int Rh;
     
-    __host__ __device__ Rounds(int re1, int re2, int ri, int rh) 
+    __host__ Rounds(int re1, int re2, int ri, int rh) 
         : Re_1(re1), Re_2(re2), Ri(ri), Rh(rh) {}
 };
 
@@ -40,7 +40,7 @@ struct DotPair {
     FiniteField dot1;
     FiniteField dot2;
     
-    __host__ __device__ DotPair(FiniteField d1, FiniteField d2) 
+    __device__ DotPair(FiniteField d1, FiniteField d2) 
         : dot1(d1), dot2(d2) {}
 };
 
@@ -91,12 +91,12 @@ private:
     FiniteFieldArray* rc_r;
 
     // 私有辅助函数
-    __host__ __device__ static int get_R_star(int kappa);
-    __host__ __device__ static int get_round_num_head(FiniteField p, int kappa);
-    __host__ __device__ static int get_round_num_internal(FiniteField p, int kappa, int d);
-    __host__ __device__ static int get_d(const FiniteField& p);
-    __host__ __device__ static Rounds get_rounds(FiniteField p, int kappa, int d);
-    __host__ __device__ static int num_perms(int t);
+    __host__ static int get_R_star(int kappa);
+    __host__ static int get_round_num_head(FiniteField p, int kappa);
+    __host__ static int get_round_num_internal(FiniteField p, int kappa, int d);
+    __host__ static int get_d(const FiniteField& p);
+    __host__ static Rounds get_rounds(FiniteField p, int kappa, int d);
+    __host__ static int num_perms(int t);
     // SHAKE128 相关函数
     __host__ void initShake(const FiniteField &p, const char* context, Keccak_HashInstance &shake);
     __host__ FiniteField field_element_from_shake(Keccak_HashInstance &shake);
@@ -109,24 +109,24 @@ private:
     __host__ FiniteFieldArray* gen_rc(int rounds, int size, Keccak_HashInstance &shake);
 
     // 非线性变换函数
-    __host__ __device__ FiniteFieldArray non_linear_e(const FiniteFieldArray& state);
-    __host__ __device__ FiniteFieldArray non_linear_i(const FiniteFieldArray& state);
-    __host__ __device__ FiniteFieldArray non_linear_h(const FiniteFieldArray& state);
-    __host__ __device__ DotPair non_linear_r(FiniteFieldArray y, FiniteFieldArray z);
+    __device__ FiniteFieldArray non_linear_e(const FiniteFieldArray& state);
+    __device__ FiniteFieldArray non_linear_i(const FiniteFieldArray& state);
+    __device__ FiniteFieldArray non_linear_h(const FiniteFieldArray& state);
+    __device__ DotPair non_linear_r(FiniteFieldArray y, FiniteFieldArray z);
     
     // 辅助函数
-    __host__ __device__ DotPair get_lm_dot(const FiniteFieldArray& state);
-    __host__ __device__ static FiniteFieldArray concat(const FiniteFieldArray& a, const FiniteFieldArray& b);
-    __host__ __device__ static FiniteFieldArray concat_vec(const FiniteFieldArray& a, const FiniteFieldArray& b);
+    __device__ DotPair get_lm_dot(const FiniteFieldArray& state);
+    __device__ static FiniteFieldArray concat(const FiniteFieldArray& a, const FiniteFieldArray& b);
+    __device__ static FiniteFieldArray concat_vec(const FiniteFieldArray& a, const FiniteFieldArray& b);
     __host__ __device__ static FiniteFieldArray slice(const FiniteFieldArray& state, int start, int end);
     __host__ __device__ static double max_double(double a, double b);
     __host__ __device__ static double max_three_double(double a, double b, double c);
     
     // 置换函数
-    __host__ __device__ StateSumPair permutation_b(FiniteFieldArray state);
+    __device__ StateSumPair permutation_b(FiniteFieldArray state);
     __host__ __device__ FiniteFieldArray permutation_i(FiniteFieldArray state);
-    __host__ __device__ FiniteFieldArray permutation_h(FiniteFieldArray state, const FiniteFieldArray& K);
-    __host__ __device__ FiniteFieldArray R(const FiniteFieldArray& state, int i);
+    __device__ FiniteFieldArray permutation_h(FiniteFieldArray state, const FiniteFieldArray& K);
+    __device__ FiniteFieldArray R(const FiniteFieldArray& state, int i);
 
     // 辅助函数 - 添加字符串长度计算函数
     __host__ __device__ static size_t c_strlen(const char* str) {
@@ -144,17 +144,13 @@ public:
                    rc_b(nullptr), rc_h(nullptr), rc_r(nullptr) {}
 
     // 密钥生成和加密解密函数
-    __host__ __device__ FiniteFieldArray gen_ks(int t, const FiniteFieldArray& K, const FiniteFieldArray& IV, const FiniteFieldArray& N);
-     __device__ __forceinline__ FiniteFieldArray encrypt(
+    __device__ FiniteFieldArray gen_ks(int t, const FiniteFieldArray& K, const FiniteFieldArray& IV, const FiniteFieldArray& N);
+    __device__ FiniteFieldArray encrypt(
         const FiniteFieldArray& plains,
         const FiniteFieldArray& K,
         const FiniteFieldArray& IV,
         const FiniteFieldArray& N
-    ) {
-        FiniteFieldArray keystream = gen_ks(plains.getSize(), K, IV, N);
-        FiniteFieldArray ciphers = plains + keystream;
-        return ciphers;
-    }
+    );
     
     __device__ FiniteFieldArray decrypt(
         const FiniteFieldArray& ciphers,

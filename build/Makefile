@@ -129,6 +129,19 @@ hydra/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/build
 .PHONY : hydra/fast
 
+#=============================================================================
+# Target rules for targets named test_hydra
+
+# Build rule for target.
+test_hydra: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_hydra
+.PHONY : test_hydra
+
+# fast build rule for target.
+test_hydra/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_hydra.dir/build.make CMakeFiles/test_hydra.dir/build
+.PHONY : test_hydra/fast
+
 src/Hydra.o: src/Hydra.cu.o
 .PHONY : src/Hydra.o
 
@@ -225,6 +238,30 @@ src/polynomial.cu.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hydra.dir/build.make CMakeFiles/hydra.dir/src/polynomial.cu.s
 .PHONY : src/polynomial.cu.s
 
+test/test_hydra.o: test/test_hydra.cu.o
+.PHONY : test/test_hydra.o
+
+# target to build an object file
+test/test_hydra.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_hydra.dir/build.make CMakeFiles/test_hydra.dir/test/test_hydra.cu.o
+.PHONY : test/test_hydra.cu.o
+
+test/test_hydra.i: test/test_hydra.cu.i
+.PHONY : test/test_hydra.i
+
+# target to preprocess a source file
+test/test_hydra.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_hydra.dir/build.make CMakeFiles/test_hydra.dir/test/test_hydra.cu.i
+.PHONY : test/test_hydra.cu.i
+
+test/test_hydra.s: test/test_hydra.cu.s
+.PHONY : test/test_hydra.s
+
+# target to generate assembly for a file
+test/test_hydra.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_hydra.dir/build.make CMakeFiles/test_hydra.dir/test/test_hydra.cu.s
+.PHONY : test/test_hydra.cu.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -234,6 +271,7 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... hydra"
+	@echo "... test_hydra"
 	@echo "... src/Hydra.o"
 	@echo "... src/Hydra.i"
 	@echo "... src/Hydra.s"
@@ -246,6 +284,9 @@ help:
 	@echo "... src/polynomial.o"
 	@echo "... src/polynomial.i"
 	@echo "... src/polynomial.s"
+	@echo "... test/test_hydra.o"
+	@echo "... test/test_hydra.i"
+	@echo "... test/test_hydra.s"
 .PHONY : help
 
 

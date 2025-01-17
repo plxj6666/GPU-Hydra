@@ -8,7 +8,12 @@ int main() {
     FiniteField p = FiniteField::fromParts(0, p_);
     int t = 5;   // 明文长度
     int sec = 128; // 安全级别
-
+        // 创建CUDA事件
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    
+    cudaEventRecord(start);
     // 主机端初始化 Hydra
     Hydra h_hydra(p, t, sec);
 
@@ -30,14 +35,6 @@ int main() {
     h_state_out.setElements(d_elements, false);      // 设置 elements 指针（不拥有内存）
 
     cudaMemcpy(d_state_out, &h_state_out, sizeof(FiniteFieldArray), cudaMemcpyHostToDevice);
-
-    // 创建CUDA事件
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-
-    // 记录开始时间
-    cudaEventRecord(start);
 
     // 调用加密核函数
     hydraEncrypt<<<1, 1>>>(d_state_out, d_hydra, t);

@@ -160,7 +160,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
 }
 
 // 辅助函数实现
- __host__ __device__ int Hydra::get_R_star(int kappa) {
+ __host__ int Hydra::get_R_star(int kappa) {
     assert(kappa >= 80 && kappa <= 256);
     int R_star[177] = {
     19, 19, 19, 19, 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 22, 22, 23,
@@ -178,7 +178,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
     return R_star[kappa - 80];
 }
 
- __host__ __device__ int Hydra::num_perms(int t) {
+ __host__ int Hydra::num_perms(int t) {
     int t_ = t / 8;
     int t__ = t % 8;
     int perms = t_;
@@ -188,7 +188,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
     return perms;
 }
 
- __host__ __device__ double log2_finitefield(const FiniteField& x) {
+ __host__ double log2_finitefield(const FiniteField& x) {
     // 找到最高位的1的位置
     int msb = -1;
     uint128_t value = x.getLow();
@@ -201,7 +201,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
 }
 
 
- __host__ __device__ int Hydra::get_round_num_head(FiniteField p, int kappa) {
+ __host__ int Hydra::get_round_num_head(FiniteField p, int kappa) {
     int R_star = get_R_star(kappa);
     double x0 = kappa / 24.0 + log2(12);
     double x1 = (kappa - log2_finitefield(p)) / 22.0 + log2(11);
@@ -218,7 +218,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
     return R;
 }
 
- __host__ __device__ Rounds Hydra::get_rounds(FiniteField p, int kappa, int d) {
+ __host__ Rounds Hydra::get_rounds(FiniteField p, int kappa, int d) {
     int Re_1 = 2;
     int Re_2 = 4;
     int Ri = get_round_num_internal(p, kappa, d);
@@ -227,7 +227,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
 }
 
 // 首先需要一个辅助函数来计算最大公约数 (GCD)
- __host__ __device__ FiniteField GCD(FiniteField a, FiniteField b) {
+ __host__ FiniteField GCD(FiniteField a, FiniteField b) {
     while (!(b.getLow() == 0)) {
         FiniteField temp = b;
         // b = a % b
@@ -238,7 +238,7 @@ __host__ FiniteField Hydra::field_element_from_shake(Keccak_HashInstance &shake)
     return a;
 }
 
- __host__ __device__ int Hydra::get_d(const FiniteField& p) {
+ __host__ int Hydra::get_d(const FiniteField& p) {
     for (int d = 3; d < p.getLow(); ++d) {
         if (GCD(FiniteField::fromParts(0, d), p - FiniteField::fromParts(0, 1)).getLow() == 1) {
             return d;
@@ -326,7 +326,7 @@ __host__ Matrix Hydra::gen_mi(Keccak_HashInstance &shake) {
     return rc;
 }
 
- __host__ __device__ DotPair Hydra::get_lm_dot(const FiniteFieldArray& state) {
+__device__ DotPair Hydra::get_lm_dot(const FiniteFieldArray& state) {
     // 确保输入数组长度为4
     #ifndef __CUDA_ARCH__
     if (state.getSize() != 4) {
@@ -347,7 +347,7 @@ __host__ Matrix Hydra::gen_mi(Keccak_HashInstance &shake) {
 }
 
 // ��线性变换函数
-__host__ __device__ FiniteFieldArray Hydra::non_linear_e(const FiniteFieldArray& state) {
+__device__ FiniteFieldArray Hydra::non_linear_e(const FiniteFieldArray& state) {
     FiniteFieldArray result(state.getSize());
     for (int i = 0; i < state.getSize(); ++i) {
         result[i] = FiniteField::power(state[i], d).mod();
@@ -355,7 +355,7 @@ __host__ __device__ FiniteFieldArray Hydra::non_linear_e(const FiniteFieldArray&
     return result;
 }
 
-__host__ __device__ FiniteFieldArray Hydra::non_linear_i(const FiniteFieldArray& state) {
+__device__ FiniteFieldArray Hydra::non_linear_i(const FiniteFieldArray& state) {
     DotPair dot_pair = get_lm_dot(state);
     FiniteField dot1 = dot_pair.dot1;
     FiniteField dot2 = dot_pair.dot2;
@@ -370,7 +370,7 @@ __host__ __device__ FiniteFieldArray Hydra::non_linear_i(const FiniteFieldArray&
 }
 
 
-__host__ __device__ FiniteFieldArray Hydra::non_linear_h(const FiniteFieldArray& state) {
+__device__ FiniteFieldArray Hydra::non_linear_h(const FiniteFieldArray& state) {
     // assert(state.getSize() == 8);
     FiniteField dot = state[0] + state[1] + state[2] + state[3] - state[4] - state[5] - state[6] - state[7];
     dot = (dot * dot).mod();
@@ -414,7 +414,7 @@ __device__ FiniteFieldArray Hydra::R(const FiniteFieldArray& state, int i) {
     return result;
 }
 
- __host__ __device__ FiniteFieldArray Hydra::concat(const FiniteFieldArray& a, const FiniteFieldArray& b) {
+__device__ FiniteFieldArray Hydra::concat(const FiniteFieldArray& a, const FiniteFieldArray& b) {
     FiniteFieldArray result(a.getSize() + b.getSize());
     for (int i = 0; i < a.getSize(); ++i) {
         result[i] = a[i];
@@ -425,7 +425,7 @@ __device__ FiniteFieldArray Hydra::R(const FiniteFieldArray& state, int i) {
     return result;
 }
 
- __host__ FiniteFieldArray Hydra::concat_vec(const FiniteFieldArray& a, const FiniteFieldArray& b) {
+__device__ FiniteFieldArray Hydra::concat_vec(const FiniteFieldArray& a, const FiniteFieldArray& b) {
     size_t size_a = a.getSize();
     size_t size_b = b.getSize();
     FiniteFieldArray result(size_a + size_b);
@@ -444,7 +444,7 @@ __device__ FiniteFieldArray Hydra::R(const FiniteFieldArray& state, int i) {
 }
 
 // 置换函数
-__host__ __device__ StateSumPair Hydra::permutation_b(FiniteFieldArray state) {
+__device__ StateSumPair Hydra::permutation_b(FiniteFieldArray state) {
     FiniteFieldArray sum_(4); 
     // 这个循环出错
     for (int i = 0; i < 4; ++i) {
@@ -472,7 +472,7 @@ __host__ __device__ StateSumPair Hydra::permutation_b(FiniteFieldArray state) {
     return StateSumPair(state, sum_);
 }
 
-__host__ __device__ FiniteFieldArray Hydra::permutation_h(FiniteFieldArray state, const FiniteFieldArray& K) {
+__device__ FiniteFieldArray Hydra::permutation_h(FiniteFieldArray state, const FiniteFieldArray& K) {
     for (int i = 0; i < Rh; ++i) {
         state = non_linear_h(state);
         state = (Mh * state + rc_h[i]).mod();
@@ -481,7 +481,7 @@ __host__ __device__ FiniteFieldArray Hydra::permutation_h(FiniteFieldArray state
     return state;
 }
 
-__host__ __device__ FiniteFieldArray Hydra::gen_ks(int t, const FiniteFieldArray& K, const FiniteFieldArray& IV, const FiniteFieldArray& N) {
+__device__ FiniteFieldArray Hydra::gen_ks(int t, const FiniteFieldArray& K, const FiniteFieldArray& IV, const FiniteFieldArray& N) {
     assert(IV.getSize() == 3);
     assert(K.getSize() == 4);
     
@@ -519,16 +519,16 @@ __host__ __device__ FiniteFieldArray Hydra::gen_ks(int t, const FiniteFieldArray
 }
 
 // 加密解密函数
-// __device__ FiniteFieldArray Hydra::encrypt(
-//     const FiniteFieldArray& plains,
-//     const FiniteFieldArray& K,
-//     const FiniteFieldArray& IV,
-//     const FiniteFieldArray& N
-// ) {
-//     FiniteFieldArray keystream = gen_ks(plains.getSize(), K, IV, N);
-//     FiniteFieldArray ciphers = plains + keystream;
-//     return ciphers;
-// }
+__device__ FiniteFieldArray Hydra::encrypt(
+    const FiniteFieldArray& plains,
+    const FiniteFieldArray& K,
+    const FiniteFieldArray& IV,
+    const FiniteFieldArray& N
+) {
+    FiniteFieldArray keystream = gen_ks(plains.getSize(), K, IV, N);
+    FiniteFieldArray ciphers = plains + keystream;
+    return ciphers;
+}
 
 __device__ FiniteFieldArray Hydra::decrypt(
     const FiniteFieldArray& ciphers,
@@ -541,7 +541,7 @@ __device__ FiniteFieldArray Hydra::decrypt(
     return plains;
 }
 
-__host__ __device__ FiniteFieldArray Hydra::slice(const FiniteFieldArray& state, int start, int end) {
+__device__ FiniteFieldArray Hydra::slice(const FiniteFieldArray& state, int start, int end) {
     // assert(start >= 0 && end <= state.getSize());
     FiniteFieldArray result(end - start);
     for (int i = start; i < end; ++i) {
@@ -728,19 +728,21 @@ __host__ void Hydra::freeDeviceCopy(Hydra* d_hydra) {
 //     printf("\n");
 // }
 
-// __global__ void hydraEncrypt(FiniteFieldArray* d_state_out, Hydra* d_hydra, int t) {
-//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void hydraEncrypt(FiniteFieldArray* d_state_out, Hydra* d_hydra, int t) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
     
-//     if (idx < t / 4) {
-//         FiniteField ct1, ct2, ct3, ct4;
-//         applyHydra(d_hydra, &ct1, &ct2, &ct3, &ct4);
-
-//         // 现在可以正常使用 setElement 方法
-//         d_state_out->setElement(idx * 4, ct1);
-//         d_state_out->setElement(idx * 4 + 1, ct2);
-//         d_state_out->setElement(idx * 4 + 2, ct3);
-//         d_state_out->setElement(idx * 4 + 3, ct4);
-//     }
-// }
+    if (idx < t / 4) {
+        FiniteField ct1, ct2, ct3, ct4;
+        applyHydra(d_hydra, &ct1, &ct2, &ct3, &ct4);
+        // printf("ct1: ");
+        // ct1.print();
+        // printf("\n");
+        // 现在可以正常使用 setElement 方法
+        d_state_out->setElement(idx * 4, ct1);
+        d_state_out->setElement(idx * 4 + 1, ct2);
+        d_state_out->setElement(idx * 4 + 2, ct3);
+        d_state_out->setElement(idx * 4 + 3, ct4);
+    }
+}
 
 
